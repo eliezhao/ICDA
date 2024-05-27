@@ -6,6 +6,8 @@ members = ["canister", "server"]
 name = "icda"
 version = "0.1.0"
 edition = "2021"
+repository = "https://github.com/C-B-Elite/aleo-agent"
+rust-version = "1.78.0"
 
 [workspace.dependencies]
 candid = "0.10"
