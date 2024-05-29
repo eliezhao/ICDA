@@ -1,10 +1,18 @@
 //! Storage backend for the DA server.
 
-use anyhow::{bail, Result};
+use anyhow::{bail, Error, Result};
 use async_trait::async_trait;
+use aws_sdk_s3::primitives::Blob;
 use aws_sdk_s3::Client;
+use backon::{ExponentialBuilder, Retryable};
+use candid::{Encode, Principal};
+use clap::arg;
+use ic_agent::{Agent, AgentError};
 use redb::{Database, Durability, ReadableTable, TableDefinition as TblDef};
 use sha2::Digest;
+use std::sync::Arc;
+use std::time::Duration;
+use tracing::{error, info, warn};
 
 use crate::BlobId;
 
@@ -13,6 +21,10 @@ use crate::BlobId;
 /// Key: BlobId in JSON string format
 /// Value: Blob
 const BLOBS: TblDef<&str, Vec<u8>> = TblDef::new("da_server_blobs");
+
+const CANISTER_COLLECTIONS: [[Principal; 2]; 20] = [[Principal::anonymous(); 2]; 20]; // todo: 等待创建
+
+const BASIC_TIMESTAMP: u128 = 0; // start time stamp
 
 #[async_trait]
 pub trait Storage: Send + Sync {
@@ -155,9 +167,116 @@ impl Storage for LocalStorage {
     }
 }
 
+#[derive(Clone)]
+pub struct ICStorage {
+    cids: [[Principal; 2]; 20], // 硬编码的canister id，一次存俩
+    agent: Agent,
+}
+
+impl ICStorage {
+    pub fn new(cids: [[Principal; 2]; 20], agent: Agent) -> Self {
+        Self { cids, agent }
+    }
+}
+
+#[async_trait]
+impl Storage for ICStorage {
+    async fn save_blob(&self, blob: Vec<u8>) -> Result<Vec<u8>> {
+        let blob_id = BlobId::new(&blob);
+        let key = serde_json::to_string(&blob_id)?;
+        tracing::info!(
+            "ICStorage::save_blob(): blob_id = {blob_id:?}, blob_len = {}",
+            blob.len(),
+        );
+
+        let arg = Arc::new(Encode!(&key, &blob)?);
+        let agent = Arc::new(self.agent.clone());
+        for cid in Self::get_cid(&blob_id)? {
+            let _agent = agent.clone();
+            let _arg = arg.clone();
+            let _ = tokio::spawn(Self::push_to_canister(_agent, cid, _arg)).await?;
+        }
+        Ok(key.as_bytes().to_vec())
+    }
+
+    async fn get_blob(&self, blob_id: Vec<u8>) -> Result<Vec<u8>> {
+        let key = String::from_utf8(blob_id)?;
+        let blob_id: BlobId = serde_json::from_str(&key)?;
+        let cids = Self::get_cid(&blob_id)?;
+
+        tracing::info!("ICStorage::get_blob(): blob_id = {blob_id:?}");
+
+        let cid = cids.get(0).unwrap();
+        let blob = self.agent.query(cid, "get_blob").call().await?;
+
+        let arg = Encode!(&key)?;
+        // todo: for in cids and error handle
+        let blob = self
+            .agent
+            .query(cid, "get_blob")
+            .with_arg(arg)
+            .call()
+            .await?;
+        let digest: [u8; 32] = sha2::Sha256::digest(&blob).into();
+        if blob_id.digest != digest {
+            bail!(
+                "ICStorage: digest mismatch: blob_id.digest = {:?}, actual = {digest:?}",
+                blob_id.digest
+            );
+        }
+
+        Ok(blob)
+    }
+}
+
+impl ICStorage {
+    fn get_cid(blob_id: &BlobId) -> Result<[Principal; 2]> {
+        let batch_number = (blob_id.timestamp - BASIC_TIMESTAMP) / 12;
+
+        let batch_index = batch_number % 20;
+
+        Ok(CANISTER_COLLECTIONS
+            .get(batch_index as usize)
+            .unwrap()
+            .clone())
+    }
+
+    async fn push_to_canister(agent: Arc<Agent>, cid: Principal, arg: Arc<Vec<u8>>) -> Result<()> {
+        let fut = || async {
+            let res = agent
+                .update(&cid, "save_blob")
+                .with_arg(arg.to_vec())
+                .call_and_wait()
+                .await;
+
+            match res {
+                Ok(_) => Ok(()),
+                Err(e) => {
+                    bail!("ICStorage::save_blob(): error: {:?}", e);
+                }
+            }
+        };
+
+        // 5s / retry
+        fut.retry(
+            &ExponentialBuilder::default()
+                .with_max_times(3)
+                .with_min_delay(Duration::from_secs(5)),
+        )
+        .notify(|err: &Error, dur: Duration| {
+            warn!(
+                "ICStorage::save_blob(): retrying error {:?} with sleeping {:?}",
+                err, dur
+            );
+        })
+        .await
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ic_agent::identity::BasicIdentity;
 
     async fn test_storage(storage: &dyn Storage) {
         let blob1 = vec![1; 32];
@@ -191,5 +310,16 @@ mod tests {
     async fn test_s3_storage() {
         let storage = S3Storage::new("test-region".into(), "test-bucket".into()).await;
         test_storage(&storage).await;
+    }
+
+    #[tokio::test]
+    #[ignore = "Needs Canister set up"]
+    async fn test_ic_storage() {
+        let storage = S3Storage::new("test-region".into(), "test-bucket".into()).await;
+        let identity = BasicIdentity::from_pem_file("").expect("Failed to load identity");
+        let agent = Agent::builder().with_identity(identity).build().unwrap();
+        todo!("需要先创建canister")
+        //let storage = ICStorage::new(vec![[]], agent);
+        //test_storage(&storage).await;
     }
 }

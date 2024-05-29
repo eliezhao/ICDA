@@ -555,6 +555,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "backon"
+version = "0.4.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d67782c3f868daa71d3533538e98a8e13713231969def7536e8039606fc46bf0"
+dependencies = [
+    "fastrand",
+    "futures-core",
+    "pin-project",
+    "tokio",
+]
+
+[[package]]
 name = "backtrace"
 version = "0.3.71"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -879,6 +891,19 @@ name = "clap_lex"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "98cc8fbded0c607b7ba9dd60cd98df59af97e84d24e49c8557331cfc26d301ce"
+
+[[package]]
+name = "client"
+version = "0.1.0"
+dependencies = [
+    "anyhow",
+    "candid 0.10.8",
+    "ic-agent",
+    "ic-types",
+    "serde",
+    "serde_json",
+    "tokio",
+]
 
 [[package]]
 name = "codespan-reporting"
@@ -1843,6 +1868,12 @@ dependencies = [
     "sha2 0.10.8",
     "thiserror",
 ]
+
+[[package]]
+name = "ic-types"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "95af86c6e40ea8a850c64914024762a0b91a2a6d438b412d8f4a7fc010e72519"
 
 [[package]]
 name = "ic-verify-bls-signature"
@@ -3148,6 +3179,7 @@ dependencies = [
     "aws-config",
     "aws-sdk-s3",
     "aws-sdk-sts",
+    "backon",
     "candid 0.10.8",
     "clap",
     "governor",

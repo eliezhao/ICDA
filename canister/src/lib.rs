@@ -9,6 +9,7 @@ use crate::signature_management::SignatureReply;
 use crate::time_heap::TimeHeap;
 use candid::{candid_method, CandidType, Principal};
 use ic_cdk::api::management_canister::ecdsa::{EcdsaCurve, EcdsaKeyId};
+use ic_cdk::caller;
 use ic_cdk_macros::{post_upgrade, pre_upgrade, query, update};
 use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
 use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap};
@@ -40,6 +41,8 @@ thread_local! {
 
     // signature deque
     static SIGNATURES: RefCell<SignatureQueue> = RefCell::new(SignatureQueue::new());
+
+    static OWNER: RefCell<Principal> = RefCell::new(Principal::from_text("").unwrap());
 }
 
 // Retrieves the value associated with the given key if it exists.
@@ -96,4 +99,10 @@ async fn save_blob(key: String, value: Vec<u8>) -> Result<(), String> {
 #[candid_method]
 fn get_signature() -> Option<String> {
     SIGNATURES.with(|s| s.borrow_mut().pop())
+}
+
+#[candid_method]
+fn change_owner(new_owner: Principal) {
+    assert_eq!(caller(), OWNER.with(|o| o.borrow().clone()));
+    OWNER.with(|o| *o.borrow_mut() = new_owner);
 }
