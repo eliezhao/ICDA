@@ -1,11 +1,8 @@
 use crate::blob_id::BlobId;
-use candid::Deserialize;
-use serde::Serialize;
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-const CANISTER_THRESHOLD: usize = 10; // todo: 每个canister可以存储多少个blob，一周的elements个数 / canister个数
+const CANISTER_THRESHOLD: usize = 30240;
 
 pub struct TimeHeap {
     heap: BinaryHeap<Reverse<BlobId>>,
@@ -24,7 +21,7 @@ impl TimeHeap {
 
     pub fn remove_expired(&mut self) -> Option<Reverse<BlobId>> {
         // 如果数量超过了阈值，就删除最早的blob
-        if self.heap.len() >= CANISTER_THRESHOLD {
+        if self.heap.len() > CANISTER_THRESHOLD {
             self.heap.pop()
         } else {
             None
@@ -37,7 +34,9 @@ mod test {
     use super::*;
     use crate::blob_id::BlobId;
     use std::thread::sleep;
+    use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+    // before running this test, set CANISTER_THRESHOLD = 1;
     #[test]
     fn test_time_heap() {
         let mut heap = TimeHeap::new();
@@ -69,7 +68,6 @@ mod test {
 
         assert_eq!(heap.remove_expired().unwrap(), Reverse(first_blob));
         assert_eq!(heap.heap.len(), 1);
-        assert_eq!(heap.remove_expired().unwrap(), Reverse(second_blob));
-        assert_eq!(heap.heap.len(), 0);
+        assert_eq!(heap.remove_expired(), None);
     }
 }

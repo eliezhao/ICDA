@@ -20,7 +20,7 @@ use server::disperser::{
     BlobStatus, BlobStatusReply, BlobStatusRequest, BlobVerificationProof, DisperseBlobReply,
     DisperseBlobRequest, G1Commitment, RetrieveBlobReply, RetrieveBlobRequest,
 };
-use server::upload::{LocalStorage, S3Storage, Storage};
+use server::upload::{ICStorage, LocalStorage, S3Storage, Storage};
 
 #[derive(Debug, Parser)]
 struct Cli {
@@ -63,6 +63,7 @@ struct Cli {
 enum Cmd {
     S3(S3),
     Local(Local),
+    IC(IC),
 }
 
 /// Params for using S3 for persistence.
@@ -82,6 +83,12 @@ pub struct S3 {
 pub struct Local {
     #[arg(long)]
     db_path: PathBuf,
+}
+
+#[derive(Debug, Parser)]
+pub struct IC {
+    #[arg(long)]
+    pem_path: String,
 }
 
 /// gRPC server implementation.
@@ -204,6 +211,7 @@ async fn main() -> Result<()> {
     let storage: Box<dyn Storage> = match cmd {
         Cmd::S3(S3 { profile, bucket }) => Box::new(S3Storage::new(profile, bucket).await),
         Cmd::Local(Local { db_path }) => Box::new(LocalStorage::new(db_path)?),
+        Cmd::IC(IC { pem_path }) => Box::new(ICStorage::new(pem_path)?),
     };
 
     // Save/restore a test blob to ensure the backend is set up.

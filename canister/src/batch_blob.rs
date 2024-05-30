@@ -38,15 +38,26 @@ mod tests {
     #[test]
     fn test_commit() {
         let mut commit = BatchCommit::new();
+
+        let mut blobs = vec![BlobId::new(); BATCH_SIZE];
+        let mut index = 0;
+        for i in &mut blobs {
+            i.timestamp = index;
+            index += 1;
+        }
+
         for i in 0..BATCH_SIZE {
-            let blob_id = BlobId::new();
-            if i != BATCH_SIZE {
-                assert!(commit.insert(blob_id).is_none());
-            } else {
+            let blob_id = blobs[i];
+            if i == BATCH_SIZE - 1 {
                 let res = commit.insert(blob_id);
                 assert!(res.is_some());
                 assert_eq!(res.unwrap().len(), BATCH_SIZE);
+
+                for i in 0..BATCH_SIZE {
+                    assert_eq!(commit.batch[i], blobs[i]);
+                }
             }
+            assert!(commit.insert(blob_id).is_none());
         }
     }
 }

@@ -5,10 +5,8 @@ mod time_heap;
 
 use crate::batch_blob::BatchCommit;
 use crate::blob_id::BlobId;
-use crate::signature_management::SignatureReply;
 use crate::time_heap::TimeHeap;
 use candid::{candid_method, CandidType, Principal};
-use ic_cdk::api::management_canister::ecdsa::{EcdsaCurve, EcdsaKeyId};
 use ic_cdk::caller;
 use ic_cdk_macros::{post_upgrade, pre_upgrade, query, update};
 use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
@@ -16,7 +14,6 @@ use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap};
 use serde::{Deserialize, Serialize};
 use signature_management::SignatureQueue;
 use std::cell::RefCell;
-use std::str::FromStr;
 
 type Memory = VirtualMemory<DefaultMemoryImpl>;
 
@@ -46,7 +43,7 @@ thread_local! {
 }
 
 // Retrieves the value associated with the given key if it exists.
-// return vec![] if key doesn't exit
+// Return vec![] if key doesn't exit
 #[candid_method(query)]
 fn get_blob(key: String) -> Vec<u8> {
     MAP.with(|p| p.borrow().get(&key).unwrap_or_else(|| vec![]))
@@ -64,13 +61,14 @@ async fn save_blob(key: String, value: Vec<u8>) -> Result<(), String> {
         // 0. remove previous value from time heap and stable tree
         // 1. insert new value into time heap and tree
         TIMEHEAP.with(|t| {
+            // insert new blob id into time heap and stable tree
+            t.borrow_mut().insert(blob_id.clone());
+            p.borrow_mut().insert(key, value);
+
             if let Some(previous_id) = t.borrow_mut().remove_expired() {
                 let key = serde_json::to_string(&previous_id.0).unwrap();
                 p.borrow_mut().remove(&key);
             }
-            // insert new blob id into time heap and stable tree
-            t.borrow_mut().insert(blob_id.clone());
-            p.borrow_mut().insert(key, value);
         });
 
         // commit to batch
@@ -105,4 +103,31 @@ fn get_signature() -> Option<String> {
 fn change_owner(new_owner: Principal) {
     assert_eq!(caller(), OWNER.with(|o| o.borrow().clone()));
     OWNER.with(|o| *o.borrow_mut() = new_owner);
+}
+
+#[cfg(test)]
+mod test {
+    use crate::blob_id::BlobId;
+    use crate::{get_blob, save_blob};
+
+    #[tokio::test]
+    async fn test() {
+        let blob_id_0 = BlobId {
+            digest: [0; 32],
+            timestamp: 0,
+        };
+        let key_0 = serde_json::to_string(&blob_id_0).unwrap();
+
+        let blob_id_1 = BlobId {
+            digest: [0; 32],
+            timestamp: 1,
+        };
+        let key_1 = serde_json::to_string(&blob_id_1).unwrap();
+
+        let save_0 = save_blob(key_0.clone(), vec![0]).await;
+        assert_eq!(get_blob(key_0.clone()), vec![0]); // insert to tree
+        let save_1 = save_blob(key_1.clone(), vec![1]).await;
+        assert_eq!(get_blob(key_1), vec![1]); // insert to tree and heap
+        assert_eq!(get_blob(key_0).len(), 0); // remove expired
+    }
 }
