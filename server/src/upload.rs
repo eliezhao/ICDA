@@ -7,6 +7,8 @@ use aws_sdk_s3::Client;
 use backon::{ExponentialBuilder, Retryable};
 use candid::{Encode, Principal};
 use clap::arg;
+use futures::future::join_all;
+use ic_agent::identity::BasicIdentity;
 use ic_agent::{Agent, AgentError};
 use redb::{Database, Durability, ReadableTable, TableDefinition as TblDef};
 use sha2::Digest;
@@ -169,13 +171,18 @@ impl Storage for LocalStorage {
 
 #[derive(Clone)]
 pub struct ICStorage {
-    cids: [[Principal; 2]; 20], // 硬编码的canister id，一次存俩
     agent: Agent,
 }
 
 impl ICStorage {
-    pub fn new(cids: [[Principal; 2]; 20], agent: Agent) -> Self {
-        Self { cids, agent }
+    pub fn new(pem_path: String) -> Result<Self> {
+        let identity = BasicIdentity::from_pem_file(pem_path)?;
+        let agent = Agent::builder()
+            .with_url("https://ic0.app")
+            .with_identity(identity)
+            .build()
+            .unwrap();
+        Ok(Self { agent })
     }
 }
 
@@ -206,17 +213,38 @@ impl Storage for ICStorage {
 
         tracing::info!("ICStorage::get_blob(): blob_id = {blob_id:?}");
 
-        let cid = cids.get(0).unwrap();
-        let blob = self.agent.query(cid, "get_blob").call().await?;
+        let arg = Arc::new(Encode!(&key)?);
+        let agent = Arc::new(self.agent.clone());
+        let mut tasks = Vec::new();
+        for cid in cids {
+            let _agent = agent.clone();
+            let _arg = arg.clone();
+            tasks.push(async move {
+                _agent
+                    .query(&cid, "get_blob")
+                    .with_arg(_arg.to_vec())
+                    .call()
+                    .await
+            });
+        }
 
-        let arg = Encode!(&key)?;
-        // todo: for in cids and error handle
-        let blob = self
-            .agent
-            .query(cid, "get_blob")
-            .with_arg(arg)
-            .call()
-            .await?;
+        let res = join_all(tasks.into_iter())
+            .await
+            .iter()
+            .filter_map(|res| match res {
+                Ok(blob) => Some(blob.to_vec()),
+                Err(e) => {
+                    warn!("ICStorage::get_blob(): error: {:?}", e);
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+
+        if res.len() == 0 {
+            bail!("ICStorage::get_blob(): all queries failed: {res:?}");
+        }
+
+        let blob = res.get(0).unwrap();
         let digest: [u8; 32] = sha2::Sha256::digest(&blob).into();
         if blob_id.digest != digest {
             bail!(
@@ -225,7 +253,7 @@ impl Storage for ICStorage {
             );
         }
 
-        Ok(blob)
+        Ok(blob.to_vec())
     }
 }
 
@@ -235,10 +263,7 @@ impl ICStorage {
 
         let batch_index = batch_number % 20;
 
-        Ok(CANISTER_COLLECTIONS
-            .get(batch_index as usize)
-            .unwrap()
-            .clone())
+        Ok(*CANISTER_COLLECTIONS.get(batch_index as usize).unwrap())
     }
 
     async fn push_to_canister(agent: Arc<Agent>, cid: Principal, arg: Arc<Vec<u8>>) -> Result<()> {

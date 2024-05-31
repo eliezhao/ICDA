@@ -1,0 +1,19 @@
+[package]
+name = "client"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+ic-agent = { workspace = true }
+candid = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { version = "1", features = ["full"] }
+anyhow = "1"
+ic-types = { git = "https://github.com/dfinity/ic.git" }
+icrc-ledger-types = { git = "https://github.com/dfinity/ic.git" }
+ic-management-canister-types = { git = "https://github.com/dfinity/ic.git" }
+icp-ledger = { git = "https://github.com/dfinity/ic.git" }
+cycles-minting-canister = { git = "https://github.com/dfinity/ic.git" }

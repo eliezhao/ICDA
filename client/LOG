@@ -1,0 +1,66 @@
+原始balance: 2_154_859_909
+Account ID: "4874711516b70ef0f88a7ecd47baa266c4a554850ea6373e72cd4c43756ba8e2", 
+Balance: "21"
+Create Canister in Subnet ID: 4zbus-z2bmt-ilreg-xakz4-6tyre-hsqj4-slb4g-zjwqo-snjcc-iqphi-3qe
+begin transfer
+transfer block index: Nat(12109729)
+begin notify create canisterNotify CMC Result: Err(InvalidTransaction("Intent in the block (0 == unrecognized: Memo(0)) different than in the notification (1095062083 == CreateCanister)"))
+Error: Failed to verify transaction: Intent in the block (0 == unrecognized: Memo(0)) different than in the notification (1095062083 == CreateCanister)
+
+
+
+原始balance: 2_134_839_909
+Account ID: "4874711516b70ef0f88a7ecd47baa266c4a554850ea6373e72cd4c43756ba8e2",
+Balance: "21"
+Create Canister in Subnet ID: 4zbus-z2bmt-ilreg-xakz4-6tyre-hsqj4-slb4g-zjwqo-snjcc-iqphi-3qe
+begin transfer
+transfer block index: 12111875 => 12111877:
+begin notify create canister
+Notify CMC Result: Err(Refunded { reason: "Subnet 4zbus-z2bmt-ilreg-xakz4-6tyre-hsqj4-slb4g-zjwqo-snjcc-iqphi-3qe does not exist or ytoqu-ey42w-sb2ul-m7xgn-oc7xo-i4btp-kuxjc-b6pt4-dwdzu-kfqs4-nae is not authorized to deploy to that subnet.", block_index: Some(12111877) })
+Error: The payment was refunded in block 12111877: Subnet 4zbus-z2bmt-ilreg-xakz4-6tyre-hsqj4-slb4g-zjwqo-snjcc-iqphi-3qe does not exist or ytoqu-ey42w-sb2ul-m7xgn-oc7xo-i4btp-kuxjc-b6pt4-dwdzu-kfqs4-nae is not authorized to deploy to that subnet.
+
+
+
+原始balance: 2_134_779_909
+Account ID: "4874711516b70ef0f88a7ecd47baa266c4a554850ea6373e72cd4c43756ba8e2",
+Balance: "21"
+Create Canister in Subnet ID: e66qm-3cydn-nkf4i-ml4rb-4ro6o-srm5s-x5hwq-hnprz-3meqp-s7vks-5qe
+begin notify create canister
+Notify CMC Result: Err(Refunded { reason: "Subnet 4zbus-z2bmt-ilreg-xakz4-6tyre-hsqj4-slb4g-zjwqo-snjcc-iqphi-3qe does not exist or ytoqu-ey42w-sb2ul-m7xgn-oc7xo-i4btp-kuxjc-b6pt4-dwdzu-kfqs4-nae is not authorized to deploy to that subnet.", block_index: Some(12111877) })
+Error: The payment was refunded in block 12111877: Subnet 4zbus-z2bmt-ilreg-xakz4-6tyre-hsqj4-slb4g-zjwqo-snjcc-iqphi-3qe does not exist or ytoqu-ey42w-sb2ul-m7xgn-oc7xo-i4btp-kuxjc-b6pt4-dwdzu-kfqs4-nae is not authorized to deploy to that subnet.
+
+
+
+原始balance: 2_134_779_909
+Account ID: "4874711516b70ef0f88a7ecd47baa266c4a554850ea6373e72cd4c43756ba8e2",
+Balance: "21"
+Create Canister in Subnet ID: e66qm-3cydn-nkf4i-ml4rb-4ro6o-srm5s-x5hwq-hnprz-3meqp-s7vks-5qe
+begin notify create canister
+Notify CMC Result: Err(Refunded { reason: "Subnet 4zbus-z2bmt-ilreg-xakz4-6tyre-hsqj4-slb4g-zjwqo-snjcc-iqphi-3qe does not exist or ytoqu-ey42w-sb2ul-m7xgn-oc7xo-i4btp-kuxjc-b6pt4-dwdzu-kfqs4-nae is not authorized to deploy to that subnet.", block_index: Some(12111877) })
+Error: The payment was refunded in block 12111877: Subnet 4zbus-z2bmt-ilreg-xakz4-6tyre-hsqj4-slb4g-zjwqo-snjcc-iqphi-3qe does not exist or ytoqu-ey42w-sb2ul-m7xgn-oc7xo-i4btp-kuxjc-b6pt4-dwdzu-kfqs4-nae is not authorized to deploy to that subnet.
+
+
+可能是转过一次，失败以后就返还了
+
+--new transfer
+原始balance: 2_134_779_909
+Account ID: "4874711516b70ef0f88a7ecd47baa266c4a554850ea6373e72cd4c43756ba8e2",
+Balance: "21"
+Create Canister in Subnet ID: csyj4-zmann-ys6ge-3kzi6-onexi-obayx-2fvak-zersm-euci4-6pslt-lae
+begin transfer
+transfer block index: 12112260
+begin notify create canister
+Notify CMC Result: Err(Refunded { reason: "Subnet csyj4-zmann-ys6ge-3kzi6-onexi-obayx-2fvak-zersm-euci4-6pslt-lae does not exist or ytoqu-ey42w-sb2ul-m7xgn-oc7xo-i4btp-kuxjc-b6pt4-dwdzu-kfqs4-nae is not authorized to deploy to that subnet.", block_index: Some(12112262) })
+Error: The payment was refunded in block 12112262: Subnet csyj4-zmann-ys6ge-3kzi6-onexi-obayx-2fvak-zersm-euci4-6pslt-lae does not exist or ytoqu-ey42w-sb2ul-m7xgn-oc7xo-i4btp-kuxjc-b6pt4-dwdzu-kfqs4-nae is not authorized to deploy to that subnet.
+
+-- success:
+原始balance: 2_134_719_909
+Account ID: "4874711516b70ef0f88a7ecd47baa266c4a554850ea6373e72cd4c43756ba8e2",
+Balance: "21"
+Create Canister in Subnet ID: nl6hn-ja4yw-wvmpy-3z2jx-ymc34-pisx3-3cp5z-3oj4a-qzzny-jbsv3-4qe
+begin transfer
+transfer block index: 12112302
+begin notify create canister
+Notify CMC Result: Ok(CanisterId(hxctj-oiaaa-aaaap-qhltq-cai))
+Canister ID: "hxctj-oiaaa-aaaap-qhltq-cai"
+canister id: hxctj-oiaaa-aaaap-qhltq-cai

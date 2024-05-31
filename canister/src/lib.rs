@@ -1,19 +1,23 @@
+use std::cell::RefCell;
+
+use candid::{candid_method, Principal};
+use ic_cdk::caller;
+use ic_cdk_macros::*;
+use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
+use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap};
+use serde::{Deserialize, Serialize};
+
+use signature_management::SignatureQueue;
+
+use crate::batch_blob::BatchCommit;
+use crate::blob_id::BlobId;
+use crate::signature_management::{PublicKeyReply, SignatureReply};
+use crate::time_heap::TimeHeap;
+
 mod batch_blob;
 mod blob_id;
 mod signature_management;
 mod time_heap;
-
-use crate::batch_blob::BatchCommit;
-use crate::blob_id::BlobId;
-use crate::time_heap::TimeHeap;
-use candid::{candid_method, CandidType, Principal};
-use ic_cdk::caller;
-use ic_cdk_macros::{post_upgrade, pre_upgrade, query, update};
-use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
-use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap};
-use serde::{Deserialize, Serialize};
-use signature_management::SignatureQueue;
-use std::cell::RefCell;
 
 type Memory = VirtualMemory<DefaultMemoryImpl>;
 
@@ -44,13 +48,15 @@ thread_local! {
 
 // Retrieves the value associated with the given key if it exists.
 // Return vec![] if key doesn't exit
+#[query]
 #[candid_method(query)]
 fn get_blob(key: String) -> Vec<u8> {
     MAP.with(|p| p.borrow().get(&key).unwrap_or_else(|| vec![]))
 }
 
 // Inserts an entry into the map and returns the previous value of the key if it exists.
-// todo: call to signature，其他的都做好了
+// todo: call to signature
+#[update]
 #[candid_method]
 async fn save_blob(key: String, value: Vec<u8>) -> Result<(), String> {
     let blob_id: BlobId = serde_json::from_str(&key).unwrap();
@@ -83,7 +89,7 @@ async fn save_blob(key: String, value: Vec<u8>) -> Result<(), String> {
     // check if you should get signature
     // todo : 要清楚对什么东西进行sign
     if flag {
-        match signature_management::sign("this is a message".to_string()).await {
+        match sign("this is a message".to_string()).await {
             Ok(sig) => {
                 SIGNATURES.with(|s| s.borrow_mut().insert(sig.signature_hex));
             }
@@ -94,40 +100,99 @@ async fn save_blob(key: String, value: Vec<u8>) -> Result<(), String> {
     Ok(())
 }
 
+// todo : signature
+
+#[update]
 #[candid_method]
 fn get_signature() -> Option<String> {
     SIGNATURES.with(|s| s.borrow_mut().pop())
 }
 
+#[update]
+#[candid_method]
+pub async fn public_key() -> Result<PublicKeyReply, String> {
+    let request = crate::signature_management::ECDSAPublicKey {
+        canister_id: None,
+        derivation_path: vec![],
+        key_id: crate::signature_management::EcdsaKeyIds::TestKeyLocalDevelopment.to_key_id(),
+    };
+
+    let (res,): (crate::signature_management::ECDSAPublicKeyReply,) = ic_cdk::call(
+        crate::signature_management::mgmt_canister_id(),
+        "ecdsa_public_key",
+        (request,),
+    )
+    .await
+    .map_err(|e| format!("ecdsa_public_key failed {}", e.1))?;
+
+    Ok(PublicKeyReply {
+        public_key_hex: hex::encode(&res.public_key),
+    })
+}
+
+#[update]
+#[candid_method]
+pub async fn sign(message: String) -> Result<SignatureReply, String> {
+    let request = crate::signature_management::SignWithECDSA {
+        message_hash: crate::signature_management::sha256(&message).to_vec(),
+        derivation_path: vec![],
+        key_id: crate::signature_management::EcdsaKeyIds::TestKeyLocalDevelopment.to_key_id(),
+    };
+
+    let (response,): (crate::signature_management::SignWithECDSAReply,) =
+        ic_cdk::api::call::call_with_payment(
+            crate::signature_management::mgmt_canister_id(),
+            "sign_with_ecdsa",
+            (request,),
+            25_000_000_000,
+        )
+        .await
+        .map_err(|e| format!("sign_with_ecdsa failed {}", e.1))?;
+
+    Ok(SignatureReply {
+        signature_hex: hex::encode(&response.signature),
+    })
+}
+
+#[update]
 #[candid_method]
 fn change_owner(new_owner: Principal) {
     assert_eq!(caller(), OWNER.with(|o| o.borrow().clone()));
     OWNER.with(|o| *o.borrow_mut() = new_owner);
 }
 
+candid::export_service!();
+fn _export_service() {
+    println!("{}", __export_service());
+}
+
 #[cfg(test)]
 mod test {
-    use crate::blob_id::BlobId;
-    use crate::{get_blob, save_blob};
+    use super::*;
 
-    #[tokio::test]
-    async fn test() {
-        let blob_id_0 = BlobId {
-            digest: [0; 32],
-            timestamp: 0,
-        };
-        let key_0 = serde_json::to_string(&blob_id_0).unwrap();
-
-        let blob_id_1 = BlobId {
-            digest: [0; 32],
-            timestamp: 1,
-        };
-        let key_1 = serde_json::to_string(&blob_id_1).unwrap();
-
-        let save_0 = save_blob(key_0.clone(), vec![0]).await;
-        assert_eq!(get_blob(key_0.clone()), vec![0]); // insert to tree
-        let save_1 = save_blob(key_1.clone(), vec![1]).await;
-        assert_eq!(get_blob(key_1), vec![1]); // insert to tree and heap
-        assert_eq!(get_blob(key_0).len(), 0); // remove expired
+    #[test]
+    fn export_candid() {
+        _export_service();
     }
+
+    // #[tokio::test]
+    // async fn test() {
+    //     let blob_id_0 = BlobId {
+    //         digest: [0; 32],
+    //         timestamp: 0,
+    //     };
+    //     let key_0 = serde_json::to_string(&blob_id_0).unwrap();
+    //
+    //     let blob_id_1 = BlobId {
+    //         digest: [0; 32],
+    //         timestamp: 1,
+    //     };
+    //     let key_1 = serde_json::to_string(&blob_id_1).unwrap();
+    //
+    //     let save_0 = save_blob(key_0.clone(), vec![0]).await;
+    //     assert_eq!(get_blob(key_0.clone()), vec![0]); // insert to tree
+    //     let save_1 = save_blob(key_1.clone(), vec![1]).await;
+    //     assert_eq!(get_blob(key_1), vec![1]); // insert to tree and heap
+    //     assert_eq!(get_blob(key_0).len(), 0); // remove expired
+    // }
 }

@@ -1,0 +1,2 @@
+- [ ] create canister in specific subnet
+- [ ] interact with ledger and cmc

@@ -6,3 +6,6 @@
     - Communication with canisters
 - Canister:
     - storage blob and execute threshold ecdsa
+- 实现功能
+- 测试
+- 优化
