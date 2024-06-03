@@ -53,7 +53,7 @@ begin notify create canister
 Notify CMC Result: Err(Refunded { reason: "Subnet csyj4-zmann-ys6ge-3kzi6-onexi-obayx-2fvak-zersm-euci4-6pslt-lae does not exist or ytoqu-ey42w-sb2ul-m7xgn-oc7xo-i4btp-kuxjc-b6pt4-dwdzu-kfqs4-nae is not authorized to deploy to that subnet.", block_index: Some(12112262) })
 Error: The payment was refunded in block 12112262: Subnet csyj4-zmann-ys6ge-3kzi6-onexi-obayx-2fvak-zersm-euci4-6pslt-lae does not exist or ytoqu-ey42w-sb2ul-m7xgn-oc7xo-i4btp-kuxjc-b6pt4-dwdzu-kfqs4-nae is not authorized to deploy to that subnet.
 
--- success:
+-- success:第一个canister
 原始balance: 2_134_719_909
 Account ID: "4874711516b70ef0f88a7ecd47baa266c4a554850ea6373e72cd4c43756ba8e2",
 Balance: "21"
@@ -62,5 +62,15 @@ begin transfer
 transfer block index: 12112302
 begin notify create canister
 Notify CMC Result: Ok(CanisterId(hxctj-oiaaa-aaaap-qhltq-cai))
+Subnet ID: nl6hn-ja4yw-wvmpy-3z2jx-ymc34-pisx3-3cp5z-3oj4a-qzzny-jbsv3-4qe
 Canister ID: "hxctj-oiaaa-aaaap-qhltq-cai"
 canister id: hxctj-oiaaa-aaaap-qhltq-cai
+
+-- success: 第二个canister
+Create Canister in Subnet ID: opn46-zyspe-hhmyp-4zu6u-7sbrh-dok77-m7dch-im62f-vyimr-a3n2c-4ae
+begin transfer
+transfer block index: 12152057
+begin notify create canister
+Notify CMC Result: Ok(CanisterId(v3y75-6iaaa-aaaak-qikaa-cai))
+Canister ID: "v3y75-6iaaa-aaaak-qikaa-cai"
+canister id: v3y75-6iaaa-aaaak-qikaa-cai

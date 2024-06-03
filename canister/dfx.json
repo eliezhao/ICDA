@@ -4,6 +4,11 @@
       "candid": "canister.did",
       "package": "canister",
       "type": "rust"
+    },
+    "second": {
+      "candid": "canister.did",
+      "package": "canister",
+      "type": "rust"
     }
   },
   "defaults": {

@@ -1,5 +1,8 @@
 //! Storage backend for the DA server.
 
+use std::sync::Arc;
+use std::time::Duration;
+
 use anyhow::{bail, Error, Result};
 use async_trait::async_trait;
 use aws_sdk_s3::primitives::Blob;
@@ -12,8 +15,6 @@ use ic_agent::identity::BasicIdentity;
 use ic_agent::{Agent, AgentError};
 use redb::{Database, Durability, ReadableTable, TableDefinition as TblDef};
 use sha2::Digest;
-use std::sync::Arc;
-use std::time::Duration;
 use tracing::{error, info, warn};
 
 use crate::BlobId;
@@ -24,7 +25,8 @@ use crate::BlobId;
 /// Value: Blob
 const BLOBS: TblDef<&str, Vec<u8>> = TblDef::new("da_server_blobs");
 
-const CANISTER_COLLECTIONS: [[Principal; 2]; 20] = [[Principal::anonymous(); 2]; 20]; // todo: 等待创建
+const CANISTER_COLLECTIONS: [[&str; 2]; 20] =
+    [["hxctj-oiaaa-aaaap-qhltq-cai", "v3y75-6iaaa-aaaak-qikaa-cai"]; 20]; // todo: 等待创建
 
 const BASIC_TIMESTAMP: u128 = 0; // start time stamp
 
@@ -263,7 +265,12 @@ impl ICStorage {
 
         let batch_index = batch_number % 20;
 
-        Ok(*CANISTER_COLLECTIONS.get(batch_index as usize).unwrap())
+        let cids = CANISTER_COLLECTIONS.get(batch_index as usize).unwrap();
+
+        Ok([
+            Principal::from_text(cids[0]).unwrap(),
+            Principal::from_text(cids[1]).unwrap(),
+        ])
     }
 
     async fn push_to_canister(agent: Arc<Agent>, cid: Principal, arg: Arc<Vec<u8>>) -> Result<()> {
@@ -300,8 +307,9 @@ impl ICStorage {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use ic_agent::identity::BasicIdentity;
+
+    use super::*;
 
     async fn test_storage(storage: &dyn Storage) {
         let blob1 = vec![1; 32];

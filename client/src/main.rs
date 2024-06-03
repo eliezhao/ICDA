@@ -27,19 +27,12 @@ async fn main() -> Result<()> {
     let cmc = CmcAgent::new(agent.clone());
 
     // get account balance
-    let account = Account::from(agent.get_principal().unwrap());
-    let balance = ledger.balance_of(account).await?;
-    println!("原始balance: {}", balance.to_string());
-    let balance = balance.div(100_000_000usize);
-    let account_id = AccountIdentifier::from(agent.get_principal().unwrap());
-    println!(
-        "Account ID: {:?}, \nBalance: {:?}",
-        account_id.to_string(),
-        balance.to_string()
-    );
+    get_account_balance(agent.clone(), ledger.clone()).await;
 
+    // first subnet: nl6hn-ja4yw-wvmpy-3z2jx-ymc34-pisx3-3cp5z-3oj4a-qzzny-jbsv3-4qe
+    // second subnet:  opn46-zyspe-hhmyp-4zu6u-7sbrh-dok77-m7dch-im62f-vyimr-a3n2c-4ae
     let subnet_id = SubnetId::from(PrincipalId::from(
-        Principal::from_text("nl6hn-ja4yw-wvmpy-3z2jx-ymc34-pisx3-3cp5z-3oj4a-qzzny-jbsv3-4qe")
+        Principal::from_text("opn46-zyspe-hhmyp-4zu6u-7sbrh-dok77-m7dch-im62f-vyimr-a3n2c-4ae")
             .unwrap(),
     ));
 
@@ -47,6 +40,24 @@ async fn main() -> Result<()> {
     // create canister in specific subnet
     let canister_id = create_canister_in_specific_subnet(cmc, ledger, subnet_id).await?;
     println!("canister id: {}", canister_id.to_string());
+    Ok(())
+}
+
+async fn get_account_balance(agent: Agent, ledger: LedgerAgent) -> Result<()> {
+    let account = Account::from(agent.get_principal().unwrap());
+    let balance = ledger.balance_of(account).await?;
+    println!("原始balance: {}", balance.to_string());
+    let balance = balance.div(100_000_000usize);
+    let account_id = AccountIdentifier::from(agent.get_principal().unwrap());
+    println!(
+        "\
+        Principal: {},\n
+        Account ID: {:?},\n 
+        Balance: {:?}",
+        agent.get_principal().unwrap().to_string(),
+        account_id.to_string(),
+        balance.to_string()
+    );
     Ok(())
 }
 

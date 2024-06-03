@@ -48,7 +48,7 @@ thread_local! {
 
 // Retrieves the value associated with the given key if it exists.
 // Return vec![] if key doesn't exit
-#[query]
+#[query(name = "get_blob")]
 #[candid_method(query)]
 fn get_blob(key: String) -> Vec<u8> {
     MAP.with(|p| p.borrow().get(&key).unwrap_or_else(|| vec![]))
@@ -56,7 +56,7 @@ fn get_blob(key: String) -> Vec<u8> {
 
 // Inserts an entry into the map and returns the previous value of the key if it exists.
 // todo: call to signature
-#[update]
+#[update(name = "save_blob")]
 #[candid_method]
 async fn save_blob(key: String, value: Vec<u8>) -> Result<(), String> {
     let blob_id: BlobId = serde_json::from_str(&key).unwrap();
@@ -100,15 +100,13 @@ async fn save_blob(key: String, value: Vec<u8>) -> Result<(), String> {
     Ok(())
 }
 
-// todo : signature
-
-#[update]
+#[update(name = "get_signature")]
 #[candid_method]
 fn get_signature() -> Option<String> {
     SIGNATURES.with(|s| s.borrow_mut().pop())
 }
 
-#[update]
+#[update(name = "public_key")]
 #[candid_method]
 pub async fn public_key() -> Result<PublicKeyReply, String> {
     let request = crate::signature_management::ECDSAPublicKey {
@@ -154,45 +152,35 @@ pub async fn sign(message: String) -> Result<SignatureReply, String> {
     })
 }
 
-#[update]
+#[update(name = "change_owner")]
 #[candid_method]
 fn change_owner(new_owner: Principal) {
     assert_eq!(caller(), OWNER.with(|o| o.borrow().clone()));
     OWNER.with(|o| *o.borrow_mut() = new_owner);
 }
 
-candid::export_service!();
-fn _export_service() {
-    println!("{}", __export_service());
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn export_candid() {
-        _export_service();
-    }
-
-    // #[tokio::test]
-    // async fn test() {
-    //     let blob_id_0 = BlobId {
-    //         digest: [0; 32],
-    //         timestamp: 0,
-    //     };
-    //     let key_0 = serde_json::to_string(&blob_id_0).unwrap();
-    //
-    //     let blob_id_1 = BlobId {
-    //         digest: [0; 32],
-    //         timestamp: 1,
-    //     };
-    //     let key_1 = serde_json::to_string(&blob_id_1).unwrap();
-    //
-    //     let save_0 = save_blob(key_0.clone(), vec![0]).await;
-    //     assert_eq!(get_blob(key_0.clone()), vec![0]); // insert to tree
-    //     let save_1 = save_blob(key_1.clone(), vec![1]).await;
-    //     assert_eq!(get_blob(key_1), vec![1]); // insert to tree and heap
-    //     assert_eq!(get_blob(key_0).len(), 0); // remove expired
-    // }
-}
+// #[cfg(test)]
+// mod test {
+//     use super::*;
+//
+//     #[tokio::test]
+//     async fn test() {
+//         let blob_id_0 = BlobId {
+//             digest: [0; 32],
+//             timestamp: 0,
+//         };
+//         let key_0 = serde_json::to_string(&blob_id_0).unwrap();
+//
+//         let blob_id_1 = BlobId {
+//             digest: [0; 32],
+//             timestamp: 1,
+//         };
+//         let key_1 = serde_json::to_string(&blob_id_1).unwrap();
+//
+//         let save_0 = save_blob(key_0.clone(), vec![0]).await;
+//         assert_eq!(get_blob(key_0.clone()), vec![0]); // insert to tree
+//         let save_1 = save_blob(key_1.clone(), vec![1]).await;
+//         assert_eq!(get_blob(key_1), vec![1]); // insert to tree and heap
+//         assert_eq!(get_blob(key_0).len(), 0); // remove expired
+//     }
+// }
