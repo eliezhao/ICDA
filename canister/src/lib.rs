@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 
 use candid::{candid_method, Principal};
-use ic_cdk::{caller, print};
+use ic_cdk::{caller, print, spawn};
 use ic_cdk_macros::*;
 use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
 use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap};
@@ -83,14 +83,7 @@ async fn save_blob(key: String, value: Vec<u8>) -> Result<(), String> {
     // check if you should get signature
     // todo : 要清楚对什么东西进行sign, 用commits
     if let Some(_commits) = commits {
-        let msg = "this is a message should be signed".to_string();
-        match sign(msg.clone()).await {
-            Ok(sig) => {
-                print(format!("Signed Msg: {:?}", msg));
-                SIGNATURES.with(|s| s.borrow_mut().insert(sig.signature_hex));
-            }
-            Err(e) => print(format!("Failed to sign msg:{}, Error Info: {:?}", msg, e)),
-        }
+        spawn(batch_sign(_commits))
     }
 
     Ok(())
@@ -127,7 +120,18 @@ pub async fn public_key() -> Result<PublicKeyReply, String> {
     })
 }
 
-// todo: 暂时定为private，后续看情况修改
+async fn batch_sign(_commits: [BlobId; 12]) {
+    let msg = "this is a message should be signed".to_string();
+    match sign(msg.clone()).await {
+        Ok(sig) => {
+            print(format!("Signed Msg: {:?}", msg));
+            SIGNATURES.with(|s| s.borrow_mut().insert(sig.signature_hex));
+        }
+        Err(e) => print(format!("Failed to sign msg:{}, Error Info: {:?}", msg, e)),
+    }
+}
+
+// WARN: 暂时定为private，后续看情况修改
 async fn sign(message: String) -> Result<SignatureReply, String> {
     let request = signature_management::SignWithECDSA {
         message_hash: signature_management::sha256(&message).to_vec(),

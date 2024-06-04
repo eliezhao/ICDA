@@ -1069,14 +1069,17 @@ name = "client"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "backon",
  "candid",
  "cycles-minting-canister",
+ "futures",
  "hex",
  "ic-agent",
  "ic-management-canister-types",
  "ic-types",
  "icp-ledger",
  "icrc-ledger-types",
+ "rand",
  "secp256k1",
  "serde",
  "serde_json",

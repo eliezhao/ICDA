@@ -1,127 +1,133 @@
 extern crate core;
 
-use std::ops::Div;
-
 use anyhow::Result;
 use candid::Principal;
-use cycles_minting_canister::SubnetSelection;
 use ic_agent::identity::BasicIdentity;
 use ic_agent::Agent;
-use ic_management_canister_types::{CanisterSettingsArgsBuilder, LogVisibility};
-use ic_types::{PrincipalId, SubnetId};
-use icp_ledger::{AccountIdentifier, Memo, Subaccount, Tokens, TransferArgs};
-use icrc_ledger_types::icrc1::account::Account;
+use rand::Rng;
+use secp256k1::ecdsa::Signature;
+use secp256k1::{Message, PublicKey, Secp256k1};
 
-use client::{CmcAgent, LedgerAgent};
+use client::upload::{BlobId, ICStorage};
+use client::{get_public_key, get_signature, sha256};
 
 const E8S: u64 = 100_000_000;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    println!("开始测试");
     let identity = BasicIdentity::from_pem_file("identity.pem").unwrap();
     let agent = Agent::builder()
         .with_url("https://ic0.app")
         .with_identity(identity)
         .build()?;
 
-    let ledger = LedgerAgent::new(agent.clone());
-    let cmc = CmcAgent::new(agent.clone());
-
-    // get account balance
-    let _ = get_account_balance(agent.clone(), ledger.clone()).await;
-
-    // first subnet: nl6hn-ja4yw-wvmpy-3z2jx-ymc34-pisx3-3cp5z-3oj4a-qzzny-jbsv3-4qe
-    // second subnet:  opn46-zyspe-hhmyp-4zu6u-7sbrh-dok77-m7dch-im62f-vyimr-a3n2c-4ae
-    let subnet_id = SubnetId::from(PrincipalId::from(
-        Principal::from_text("opn46-zyspe-hhmyp-4zu6u-7sbrh-dok77-m7dch-im62f-vyimr-a3n2c-4ae")
-            .unwrap(),
-    ));
-
-    println!("Create Canister in Subnet ID: {}", subnet_id.to_string());
-    // create canister in specific subnet
-    let canister_id = create_canister_in_specific_subnet(cmc, ledger, subnet_id).await?;
-    println!("canister id: {}", canister_id.to_string());
-    Ok(())
-}
-
-async fn get_account_balance(agent: Agent, ledger: LedgerAgent) -> Result<()> {
-    let account = Account::from(agent.get_principal().unwrap());
-    let balance = ledger.balance_of(account).await?;
-    println!("原始balance: {}", balance.to_string());
-    let balance = balance.div(100_000_000usize);
-    let account_id = AccountIdentifier::from(agent.get_principal().unwrap());
-    println!(
-        "\
-        Principal: {},\n
-        Account ID: {:?},\n 
-        Balance: {:?}",
-        agent.get_principal().unwrap().to_string(),
-        account_id.to_string(),
-        balance.to_string()
-    );
-    Ok(())
-}
-
-async fn create_canister_in_specific_subnet(
-    cmc_agent: CmcAgent,
-    ledger_agent: LedgerAgent,
-    subnet: SubnetId,
-) -> Result<Principal> {
-    // my identity principal id
-    let pid = PrincipalId::from(cmc_agent.agent.get_principal().unwrap());
-    // cmc sub-account from my principal
-    let to_subaccount = Subaccount::from(&pid);
-    let cmc_id = PrincipalId::from(cmc_agent.cmc);
-
-    let block_index = transfer_to_cmc(ledger_agent, cmc_id, to_subaccount).await?;
-    let subnet_selection = Some(SubnetSelection::Subnet { subnet });
-
-    let settings = Some(
-        CanisterSettingsArgsBuilder::new()
-            .with_controller(pid)
-            .with_log_visibility(LogVisibility::Controllers)
-            .with_freezing_threshold(14 * 24 * 60 * 60) // 14 days
-            .build(),
-    );
-
-    // notify cmc to create canister
-    let arg = cycles_minting_canister::NotifyCreateCanister {
-        block_index,
-        controller: pid,
-        subnet_type: None,
-        subnet_selection,
-        settings,
+    let da = ICStorage {
+        agent: agent.clone(),
     };
 
-    let cid = cmc_agent.notify_create_canister(arg).await?;
-    println!("Canister ID: {:?}", cid.to_string());
+    let mut rng = rand::thread_rng();
+    // 准备24个blob
+    let mut batch_1 = vec![vec![0u8; 10]; 24];
+    for i in &mut batch_1 {
+        rng.fill(&mut i[..]);
+    }
 
-    Ok(cid.get().0)
-}
+    // 放24个blob进
+    println!("{}", "-".repeat(20));
+    println!("填入Blob");
+    let mut response = Vec::new();
+    for (index, item) in batch_1.iter().enumerate() {
+        println!("第 {} 个Batch", index);
+        let res = da.save_blob(item.to_vec()).await?;
+        let raw = String::from_utf8(res).unwrap();
+        let key = serde_json::from_str::<BlobId>(&raw).unwrap();
+        response.push(key);
+    }
 
-async fn transfer_to_cmc(
-    ledger_agent: LedgerAgent,
-    cmc_id: PrincipalId,
-    to_subaccount: Subaccount,
-) -> Result<u64> {
-    let memo = Memo(1095062083);
-    let fee = Tokens::from_e8s(10000);
-    let amount = Tokens::from_e8s(10_000_000);
-    let to = AccountIdentifier::new(cmc_id, Some(to_subaccount)).to_address();
+    // get 24个blob
+    // get 24 blob from canisters
+    println!("{}", "-".repeat(20));
+    println!("获取Blob");
+    let mut batch_2 = Vec::new();
+    for (index, blob_id) in response.iter().enumerate() {
+        println!("第 {} 个Batch", index);
+        let key = serde_json::to_string(&blob_id)?;
+        let res = da.get_blob(key.as_bytes().to_vec()).await?;
+        batch_2.push(res);
+    }
 
-    // transfer to destination account
-    let transfer_args = TransferArgs {
-        from_subaccount: None,
-        to,
-        amount, // 0.10 icp
-        fee,
-        created_at_time: None,
-        memo, // create canister memo
-    };
+    println!("{}", "-".repeat(20));
+    println!("验证Blob");
+    // 验证24个blob和填入的是否一致
+    for (i, (a, b)) in batch_1.iter().zip(batch_2.iter()).enumerate() {
+        assert_eq!(a, b, "blob {} not equal", i);
+    }
 
-    let block_index = ledger_agent.transfer(transfer_args).await?;
-    println!("transfer block index: {:?}", block_index);
-    Ok(block_index)
+    // 两个测试canister
+    let canister_1_principal = Principal::from_text("hxctj-oiaaa-aaaap-qhltq-cai").unwrap();
+    let canister_2_principal = Principal::from_text("v3y75-6iaaa-aaaak-qikaa-cai").unwrap();
+
+    println!("{}", "-".repeat(20));
+    println!("获取两个Canister的Public Key");
+    // get public key
+    let canister_1_public_key = PublicKey::from_slice(
+        &hex::decode(get_public_key(&agent, &canister_1_principal).await).unwrap(),
+    )
+    .unwrap();
+    let canister_2_public_key = PublicKey::from_slice(
+        &hex::decode(get_public_key(&agent, &canister_2_principal).await).unwrap(),
+    )
+    .unwrap();
+
+    println!("{}", "-".repeat(20));
+    println!("获取两个Canister的Signature");
+    // get hex encoded signatures
+    let canister_1_signature = Signature::from_compact(
+        &hex::decode(get_signature(&agent, &canister_1_principal).await).unwrap(),
+    )
+    .unwrap();
+    let canister_2_signature = Signature::from_compact(
+        &hex::decode(get_signature(&agent, &canister_2_principal).await).unwrap(),
+    )
+    .unwrap();
+
+    // verify signatures
+    let msg = Message::from_digest_slice(
+        &sha256(&"this is a message should be signed".to_string()).to_vec(),
+    )
+    .unwrap();
+    let secp = Secp256k1::verification_only();
+    if let Ok(_) = secp.verify_ecdsa(&msg, &canister_1_signature, &canister_1_public_key) {
+        println!("Canister 1 signature is valid");
+    } else {
+        println!("Canister 1 signature is invalid");
+    }
+
+    if let Ok(_) = secp.verify_ecdsa(&msg, &canister_2_signature, &canister_2_public_key) {
+        println!("Canister 2 signature is valid");
+    } else {
+        println!("Canister 2 signature is invalid");
+    }
+
+    // 放第25个进，第1个应该过期
+    let mut blob_25 = vec![0u8; 10];
+    rng.fill(&mut blob_25[..]);
+    let res = da.save_blob(blob_25.clone()).await?;
+    let raw = String::from_utf8(res.clone()).unwrap();
+    let _ = serde_json::from_str::<BlobId>(&raw).unwrap(); // recover key from raw string
+
+    // get 25th blob
+    let res = da.get_blob(res).await?;
+    assert_eq!(blob_25, res);
+
+    // get blob id = 0 from canister and should return empty vector
+    let res = da
+        .get_blob(serde_json::to_string(&response[0])?.as_bytes().to_vec())
+        .await?;
+    assert_eq!(res.len(), 0);
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -130,12 +136,7 @@ mod test {
     use secp256k1::ecdsa::Signature;
     use secp256k1::{Message, PublicKey, Secp256k1};
 
-    pub fn sha256(input: &String) -> [u8; 32] {
-        use sha2::Digest;
-        let mut hasher = sha2::Sha256::new();
-        hasher.update(input.as_bytes());
-        hasher.finalize().into()
-    }
+    use client::sha256;
 
     // sign "msg" as a message and call sign function to get signature
     // verify the signature with public key
