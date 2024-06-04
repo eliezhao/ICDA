@@ -27,9 +27,10 @@
     1. 对什么进行sign？
     2. 目前先实现对threshold signature的调用，后面canister函数调用这个函数即可 ✓
 - todo:
-    1. 加上#[query] 和 update宏
+    1. 加上#[query] 和 update宏 [✓]
     2. btreemap在replace的时候是如何replace的？是replace memory还是?
     3. 测试还没写
-        1. 内部单元测试
+        1. 内部单元测试 [✓]
         2. 主网测试 + 脚本
-    4. candid interface generation
+    4. candid interface generation [✓]
+    5. time_heap 和 signature batch的持久化

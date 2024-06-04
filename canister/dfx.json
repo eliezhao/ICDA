@@ -1,11 +1,11 @@
 {
   "canisters": {
-    "canister": {
+    "canister_1": {
       "candid": "canister.did",
       "package": "canister",
       "type": "rust"
     },
-    "second": {
+    "canister_2": {
       "candid": "canister.did",
       "package": "canister",
       "type": "rust"

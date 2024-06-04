@@ -43,6 +43,7 @@ thread_local! {
     // signature deque
     static SIGNATURES: RefCell<SignatureQueue> = RefCell::new(SignatureQueue::new());
 
+    // elie's local identity
     static OWNER: RefCell<Principal> = RefCell::new(Principal::from_text("ytoqu-ey42w-sb2ul-m7xgn-oc7xo-i4btp-kuxjc-b6pt4-dwdzu-kfqs4-nae").unwrap());
 }
 
