@@ -1,6 +1,7 @@
+use std::cmp::Ordering;
+
 use candid::Deserialize;
 use serde::Serialize;
-use std::cmp::Ordering;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct BlobId {
@@ -29,7 +30,7 @@ impl PartialEq<Self> for BlobId {
 
 impl PartialOrd<Self> for BlobId {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.timestamp.partial_cmp(&other.timestamp)
+        Some(self.cmp(other))
     }
 }
 

@@ -51,7 +51,7 @@ thread_local! {
 #[query(name = "get_blob")]
 #[candid_method(query)]
 fn get_blob(key: String) -> Vec<u8> {
-    MAP.with(|p| p.borrow().get(&key).unwrap_or_else(|| vec![]))
+    MAP.with(|p| p.borrow().get(&key).unwrap_or_default())
 }
 
 // Inserts an entry into the map and returns the previous value of the key if it exists.
@@ -66,7 +66,7 @@ async fn save_blob(key: String, value: Vec<u8>) -> Result<(), String> {
         // 1. insert new value into time heap and tree
         TIMEHEAP.with(|t| {
             // insert new blob id into time heap and stable tree
-            t.borrow_mut().insert(blob_id.clone());
+            t.borrow_mut().insert(blob_id);
             p.borrow_mut().insert(key, value);
 
             if let Some(previous_id) = t.borrow_mut().remove_expired() {
@@ -122,7 +122,7 @@ pub async fn public_key() -> Result<PublicKeyReply, String> {
     .map_err(|e| format!("ecdsa_public_key failed {}", e.1))?;
 
     Ok(PublicKeyReply {
-        public_key_hex: hex::encode(&res.public_key),
+        public_key_hex: hex::encode(res.public_key),
     })
 }
 
@@ -145,7 +145,7 @@ async fn sign(message: String) -> Result<SignatureReply, String> {
         .map_err(|e| format!("sign_with_ecdsa failed {}", e.1))?;
 
     Ok(SignatureReply {
-        signature_hex: hex::encode(&response.signature),
+        signature_hex: hex::encode(response.signature),
     })
 }
 

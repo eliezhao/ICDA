@@ -83,7 +83,7 @@ pub fn sha256(input: &String) -> [u8; 32] {
 }
 
 pub fn mgmt_canister_id() -> CanisterId {
-    CanisterId::from_str(&"aaaaa-aa").unwrap()
+    CanisterId::from_str("aaaaa-aa").unwrap()
 }
 
 #[derive(CandidType, Serialize, Debug, Clone)]
