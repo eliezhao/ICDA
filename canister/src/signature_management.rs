@@ -70,7 +70,6 @@ impl SignatureQueue {
         self.queue.push_back(hex_sig);
     }
 
-    // 获取signature用update call(todo), 从queue的front pop
     pub fn pop(&mut self) -> Option<String> {
         self.queue.pop_front()
     }

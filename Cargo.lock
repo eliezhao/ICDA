@@ -1071,13 +1071,16 @@ dependencies = [
  "anyhow",
  "candid",
  "cycles-minting-canister",
+ "hex",
  "ic-agent",
  "ic-management-canister-types",
  "ic-types",
  "icp-ledger",
  "icrc-ledger-types",
+ "secp256k1",
  "serde",
  "serde_json",
+ "sha2 0.10.8",
  "tokio",
 ]
 
@@ -4080,6 +4083,24 @@ dependencies = [
  "pkcs8 0.10.2",
  "subtle",
  "zeroize",
+]
+
+[[package]]
+name = "secp256k1"
+version = "0.29.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0e0cc0f1cf93f4969faf3ea1c7d8a9faed25918d96affa959720823dfe86d4f3"
+dependencies = [
+ "secp256k1-sys",
+]
+
+[[package]]
+name = "secp256k1-sys"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1433bd67156263443f14d603720b082dd3121779323fce20cba2aa07b874bc1b"
+dependencies = [
+ "cc",
 ]
 
 [[package]]

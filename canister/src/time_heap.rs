@@ -1,6 +1,9 @@
-use crate::blob_id::BlobId;
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
+
+use ic_cdk::print;
+
+use crate::blob_id::BlobId;
 
 const CANISTER_THRESHOLD: usize = 30240;
 
@@ -16,25 +19,29 @@ impl TimeHeap {
     }
 
     pub fn insert(&mut self, item: BlobId) {
+        print(format!("Insert item to time heap: {:?}", item));
         self.heap.push(Reverse(item));
     }
 
     pub fn remove_expired(&mut self) -> Option<Reverse<BlobId>> {
         // 如果数量超过了阈值，就删除最早的blob
         if self.heap.len() > CANISTER_THRESHOLD {
-            self.heap.pop()
-        } else {
-            None
+            let expired_item = self.heap.pop();
+            print(format!("Remove expired item: {:?}", expired_item));
+            return expired_item;
         }
+        None
     }
 }
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use crate::blob_id::BlobId;
     use std::thread::sleep;
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+    use crate::blob_id::BlobId;
+
+    use super::*;
 
     // before running this test, set CANISTER_THRESHOLD = 1;
     #[test]

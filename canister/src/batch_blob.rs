@@ -1,3 +1,5 @@
+use ic_cdk::print;
+
 use crate::blob_id::BlobId;
 
 const BATCH_SIZE: usize = 12; // 12 个 blob的信息，后续看怎么出proof然后构建签名之类的
@@ -24,6 +26,7 @@ impl BatchCommit {
         self.current_index += 1;
 
         if self.current_index == BATCH_SIZE {
+            print(format!("commit batch: {:?}", self.batch));
             Some(self.batch)
         } else {
             None

@@ -1,7 +1,6 @@
 type PublicKeyReply = record { public_key_hex : text };
 type Result = variant { Ok : PublicKeyReply; Err : text };
 type Result_1 = variant { Ok; Err : text };
-type Result_2 = variant { Ok : SignatureReply; Err : text };
 type SignatureReply = record { signature_hex : text };
 service : {
   change_owner : (principal) -> ();
@@ -9,5 +8,4 @@ service : {
   get_signature : () -> (opt text);
   public_key : () -> (Result);
   save_blob : (text, blob) -> (Result_1);
-  sign : (text) -> (Result_2);
-}
+};
