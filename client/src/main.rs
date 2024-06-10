@@ -132,9 +132,14 @@ async fn main() -> Result<()> {
 
 #[cfg(test)]
 mod test {
+    use std::collections::HashMap;
+
     use hex;
+    use num_bigint::BigUint;
+    use rand::Rng;
     use secp256k1::ecdsa::Signature;
     use secp256k1::{Message, PublicKey, Secp256k1};
+    use sha2::Digest;
 
     use client::sha256;
 
@@ -161,5 +166,33 @@ mod test {
         // Verify the signature
         let res = secp.verify_ecdsa(&message, &signature, &public_key);
         assert!(res.is_ok());
+    }
+
+    // hash 确实会导致不均匀分布
+    #[test]
+    fn count_number() {
+        let mut map = HashMap::new();
+        for _ in 0..1000 {
+            let mut rng = rand::thread_rng();
+            let mut v = vec![0u8; 100];
+            rng.fill(&mut v[..]);
+            let mut hasher = sha2::Sha256::new();
+            hasher.update(v);
+            let hash: [u8; 32] = hasher.finalize().into();
+            let num = (BigUint::from_bytes_be(&hash) % BigUint::from(20u32)).bits();
+
+            let _ = map
+                .get_mut(&num)
+                .and_then(|count| Some(*count += 1))
+                .or_else(|| {
+                    map.insert(num, 1);
+                    None
+                });
+        }
+
+        // print all elements
+        for (k, v) in map.iter() {
+            println!("{:?} => {}", k, v);
+        }
     }
 }

@@ -1079,12 +1079,14 @@ dependencies = [
  "ic-types",
  "icp-ledger",
  "icrc-ledger-types",
+ "num-bigint",
  "rand",
  "secp256k1",
  "serde",
  "serde_json",
  "sha2 0.10.8",
  "tokio",
+ "tracing",
 ]
 
 [[package]]

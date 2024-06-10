@@ -5,7 +5,7 @@ use ic_cdk::print;
 
 use crate::blob_id::BlobId;
 
-const CANISTER_THRESHOLD: usize = 30240;
+const CANISTER_THRESHOLD: usize = 24; //30240
 
 pub struct TimeHeap {
     heap: BinaryHeap<Reverse<BlobId>>,

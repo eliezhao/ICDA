@@ -1,0 +1,185 @@
+开始测试
+--------------------
+填入Blob
+第 0 个Batch
+ICStorage::save_blob(): blob_id = BlobId { digest: [233, 89, 180, 73, 46, 143, 126, 166, 231, 125, 28, 129, 237, 3, 50, 141, 230, 238, 53, 54, 221, 62, 61, 216, 140, 97, 8, 167, 166, 90, 20, 13], timestamp: 1717495037205054000 }, blob_len = 10
+Blob ID: BlobId { digest: [233, 89, 180, 73, 46, 143, 126, 166, 231, 125, 28, 129, 237, 3, 50, 141, 230, 238, 53, 54, 221, 62, 61, 216, 140, 97, 8, 167, 166, 90, 20, 13], timestamp: 1717495037205054000 },
+Batch Number: 143124586433754500,
+Batch Index: 0
+ICStorage::save_blob(): success: cid = hxctj-oiaaa-aaaap-qhltq-cai
+ICStorage::save_blob(): success: cid = v3y75-6iaaa-aaaak-qikaa-cai
+第 1 个Batch
+ICStorage::save_blob(): blob_id = BlobId { digest: [91, 179, 89, 215, 141, 157, 95, 90, 192, 2, 204, 81, 170, 8, 135, 3, 8, 222, 249, 3, 205, 90, 9, 173, 165, 153, 48, 53, 40, 44, 11, 197], timestamp: 1717495046131569000 }, blob_len = 10
+Blob ID: BlobId { digest: [91, 179, 89, 215, 141, 157, 95, 90, 192, 2, 204, 81, 170, 8, 135, 3, 8, 222, 249, 3, 205, 90, 9, 173, 165, 153, 48, 53, 40, 44, 11, 197], timestamp: 1717495046131569000 },
+Batch Number: 143124587177630750,
+Batch Index: 10
+ICStorage::save_blob(): success: cid = hxctj-oiaaa-aaaap-qhltq-cai
+ICStorage::save_blob(): success: cid = v3y75-6iaaa-aaaak-qikaa-cai
+第 2 个Batch
+ICStorage::save_blob(): blob_id = BlobId { digest: [147, 249, 202, 68, 192, 27, 137, 133, 249, 174, 223, 243, 186, 123, 72, 214, 105, 130, 71, 113, 172, 43, 73, 41, 60, 211, 148, 167, 177, 26, 87, 0], timestamp: 1717495051774603000 }, blob_len = 10
+Blob ID: BlobId { digest: [147, 249, 202, 68, 192, 27, 137, 133, 249, 174, 223, 243, 186, 123, 72, 214, 105, 130, 71, 113, 172, 43, 73, 41, 60, 211, 148, 167, 177, 26, 87, 0], timestamp: 1717495051774603000 },
+Batch Number: 143124587647883583,
+Batch Index: 3
+ICStorage::save_blob(): success: cid = hxctj-oiaaa-aaaap-qhltq-cai
+ICStorage::save_blob(): success: cid = v3y75-6iaaa-aaaak-qikaa-cai
+第 3 个Batch
+ICStorage::save_blob(): blob_id = BlobId { digest: [145, 103, 223, 125, 84, 198, 236, 242, 154, 62, 157, 21, 38, 175, 206, 45, 22, 146, 46, 192, 145, 108, 195, 24, 176, 226, 13, 196, 197, 26, 19, 136], timestamp: 1717495057894778000 }, blob_len = 10
+Blob ID: BlobId { digest: [145, 103, 223, 125, 84, 198, 236, 242, 154, 62, 157, 21, 38, 175, 206, 45, 22, 146, 46, 192, 145, 108, 195, 24, 176, 226, 13, 196, 197, 26, 19, 136], timestamp: 1717495057894778000 },
+Batch Number: 143124588157898166,
+Batch Index: 6
+ICStorage::save_blob(): success: cid = hxctj-oiaaa-aaaap-qhltq-cai
+ICStorage::save_blob(): success: cid = v3y75-6iaaa-aaaak-qikaa-cai
+第 4 个Batch
+ICStorage::save_blob(): blob_id = BlobId { digest: [50, 101, 236, 232, 137, 108, 69, 238, 93, 159, 111, 233, 108, 229, 234, 78, 240, 195, 182, 176, 127, 140, 203, 20, 36, 201, 191, 163, 210, 187, 147, 223], timestamp: 1717495064718026000 }, blob_len = 10
+Blob ID: BlobId { digest: [50, 101, 236, 232, 137, 108, 69, 238, 93, 159, 111, 233, 108, 229, 234, 78, 240, 195, 182, 176, 127, 140, 203, 20, 36, 201, 191, 163, 210, 187, 147, 223], timestamp: 1717495064718026000 },
+Batch Number: 143124588726502166,
+Batch Index: 6
+ICStorage::save_blob(): success: cid = hxctj-oiaaa-aaaap-qhltq-cai
+ICStorage::save_blob(): success: cid = v3y75-6iaaa-aaaak-qikaa-cai
+第 5 个Batch
+ICStorage::save_blob(): blob_id = BlobId { digest: [204, 179, 25, 245, 76, 134, 67, 128, 14, 7, 189, 173, 236, 129, 184, 25, 86, 145, 173, 117, 197, 234, 220, 172, 30, 229, 231, 93, 33, 228, 198, 14], timestamp: 1717495070722510000 }, blob_len = 10
+Blob ID: BlobId { digest: [204, 179, 25, 245, 76, 134, 67, 128, 14, 7, 189, 173, 236, 129, 184, 25, 86, 145, 173, 117, 197, 234, 220, 172, 30, 229, 231, 93, 33, 228, 198, 14], timestamp: 1717495070722510000 },
+Batch Number: 143124589226875833,
+Batch Index: 13
+ICStorage::save_blob(): success: cid = hxctj-oiaaa-aaaap-qhltq-cai
+ICStorage::save_blob(): success: cid = v3y75-6iaaa-aaaak-qikaa-cai
+第 6 个Batch
+ICStorage::save_blob(): blob_id = BlobId { digest: [125, 239, 143, 44, 233, 110, 66, 35, 236, 79, 168, 141, 242, 243, 177, 255, 241, 254, 121, 224, 97, 29, 84, 184, 34, 104, 186, 35, 73, 64, 139, 197], timestamp: 1717495077409226000 }, blob_len = 10
+Blob ID: BlobId { digest: [125, 239, 143, 44, 233, 110, 66, 35, 236, 79, 168, 141, 242, 243, 177, 255, 241, 254, 121, 224, 97, 29, 84, 184, 34, 104, 186, 35, 73, 64, 139, 197], timestamp: 1717495077409226000 },
+Batch Number: 143124589784102166,
+Batch Index: 6
+ICStorage::save_blob(): success: cid = hxctj-oiaaa-aaaap-qhltq-cai
+ICStorage::save_blob(): success: cid = v3y75-6iaaa-aaaak-qikaa-cai
+第 7 个Batch
+ICStorage::save_blob(): blob_id = BlobId { digest: [129, 64, 53, 82, 177, 181, 144, 152, 76, 211, 116, 168, 85, 231, 181, 227, 56, 188, 19, 193, 145, 192, 151, 65, 18, 1, 139, 53, 228, 18, 241, 32], timestamp: 1717495083548543000 }, blob_len = 10
+Blob ID: BlobId { digest: [129, 64, 53, 82, 177, 181, 144, 152, 76, 211, 116, 168, 85, 231, 181, 227, 56, 188, 19, 193, 145, 192, 151, 65, 18, 1, 139, 53, 228, 18, 241, 32], timestamp: 1717495083548543000 },
+Batch Number: 143124590295711916,
+Batch Index: 16
+ICStorage::save_blob(): success: cid = hxctj-oiaaa-aaaap-qhltq-cai
+ICStorage::save_blob(): success: cid = v3y75-6iaaa-aaaak-qikaa-cai
+第 8 个Batch
+ICStorage::save_blob(): blob_id = BlobId { digest: [44, 57, 95, 50, 223, 37, 159, 10, 208, 18, 171, 113, 102, 20, 7, 173, 4, 136, 235, 16, 53, 183, 248, 198, 174, 103, 160, 199, 27, 82, 66, 52], timestamp: 1717495088603869000 }, blob_len = 10
+Blob ID: BlobId { digest: [44, 57, 95, 50, 223, 37, 159, 10, 208, 18, 171, 113, 102, 20, 7, 173, 4, 136, 235, 16, 53, 183, 248, 198, 174, 103, 160, 199, 27, 82, 66, 52], timestamp: 1717495088603869000 },
+Batch Number: 143124590716989083,
+Batch Index: 3
+ICStorage::save_blob(): success: cid = hxctj-oiaaa-aaaap-qhltq-cai
+ICStorage::save_blob(): success: cid = v3y75-6iaaa-aaaak-qikaa-cai
+第 9 个Batch
+ICStorage::save_blob(): blob_id = BlobId { digest: [113, 7, 131, 247, 153, 102, 22, 90, 130, 29, 250, 62, 39, 8, 128, 191, 15, 93, 85, 63, 198, 185, 70, 100, 82, 235, 5, 155, 23, 91, 207, 181], timestamp: 1717495094377401000 }, blob_len = 10
+Blob ID: BlobId { digest: [113, 7, 131, 247, 153, 102, 22, 90, 130, 29, 250, 62, 39, 8, 128, 191, 15, 93, 85, 63, 198, 185, 70, 100, 82, 235, 5, 155, 23, 91, 207, 181], timestamp: 1717495094377401000 },
+Batch Number: 143124591198116750,
+Batch Index: 10
+ICStorage::save_blob(): success: cid = hxctj-oiaaa-aaaap-qhltq-cai
+ICStorage::save_blob(): success: cid = v3y75-6iaaa-aaaak-qikaa-cai
+第 10 个Batch
+ICStorage::save_blob(): blob_id = BlobId { digest: [11, 235, 176, 110, 77, 235, 89, 55, 61, 15, 227, 85, 12, 254, 113, 240, 194, 15, 176, 137, 106, 103, 99, 75, 122, 199, 153, 110, 18, 41, 187, 31], timestamp: 1717495101427356000 }, blob_len = 10
+Blob ID: BlobId { digest: [11, 235, 176, 110, 77, 235, 89, 55, 61, 15, 227, 85, 12, 254, 113, 240, 194, 15, 176, 137, 106, 103, 99, 75, 122, 199, 153, 110, 18, 41, 187, 31], timestamp: 1717495101427356000 },
+Batch Number: 143124591785613000,
+Batch Index: 0
+ICStorage::save_blob(): success: cid = hxctj-oiaaa-aaaap-qhltq-cai
+ICStorage::save_blob(): success: cid = v3y75-6iaaa-aaaak-qikaa-cai
+第 11 个Batch
+ICStorage::save_blob(): blob_id = BlobId { digest: [63, 246, 104, 26, 44, 190, 138, 251, 107, 163, 67, 175, 74, 229, 45, 247, 143, 77, 93, 176, 203, 32, 129, 210, 18, 182, 95, 162, 133, 243, 184, 160], timestamp: 1717495106603260000 }, blob_len = 10
+Blob ID: BlobId { digest: [63, 246, 104, 26, 44, 190, 138, 251, 107, 163, 67, 175, 74, 229, 45, 247, 143, 77, 93, 176, 203, 32, 129, 210, 18, 182, 95, 162, 133, 243, 184, 160], timestamp: 1717495106603260000 },
+Batch Number: 143124592216938333,
+Batch Index: 13
+ICStorage::save_blob(): success: cid = hxctj-oiaaa-aaaap-qhltq-cai
+ICStorage::save_blob(): success: cid = v3y75-6iaaa-aaaak-qikaa-cai
+第 12 个Batch
+ICStorage::save_blob(): blob_id = BlobId { digest: [113, 190, 206, 96, 116, 165, 218, 90, 186, 14, 223, 1, 157, 100, 85, 154, 167, 89, 68, 173, 79, 51, 129, 206, 190, 50, 9, 174, 41, 80, 227, 117], timestamp: 1717495113318885000 }, blob_len = 10
+Blob ID: BlobId { digest: [113, 190, 206, 96, 116, 165, 218, 90, 186, 14, 223, 1, 157, 100, 85, 154, 167, 89, 68, 173, 79, 51, 129, 206, 190, 50, 9, 174, 41, 80, 227, 117], timestamp: 1717495113318885000 },
+Batch Number: 143124592776573750,
+Batch Index: 10
+ICStorage::save_blob(): success: cid = hxctj-oiaaa-aaaap-qhltq-cai
+ICStorage::save_blob(): success: cid = v3y75-6iaaa-aaaak-qikaa-cai
+第 13 个Batch
+ICStorage::save_blob(): blob_id = BlobId { digest: [211, 209, 0, 109, 24, 23, 217, 187, 138, 175, 54, 172, 10, 72, 211, 60, 52, 86, 99, 169, 190, 157, 87, 112, 29, 190, 255, 79, 242, 246, 117, 147], timestamp: 1717495119115000000 }, blob_len = 10
+Blob ID: BlobId { digest: [211, 209, 0, 109, 24, 23, 217, 187, 138, 175, 54, 172, 10, 72, 211, 60, 52, 86, 99, 169, 190, 157, 87, 112, 29, 190, 255, 79, 242, 246, 117, 147], timestamp: 1717495119115000000 },
+Batch Number: 143124593259583333,
+Batch Index: 13
+ICStorage::save_blob(): success: cid = hxctj-oiaaa-aaaap-qhltq-cai
+ICStorage::save_blob(): success: cid = v3y75-6iaaa-aaaak-qikaa-cai
+第 14 个Batch
+ICStorage::save_blob(): blob_id = BlobId { digest: [98, 180, 101, 37, 253, 42, 137, 156, 153, 146, 202, 198, 213, 31, 199, 246, 247, 216, 67, 54, 202, 84, 231, 33, 34, 233, 67, 114, 137, 242, 90, 133], timestamp: 1717495124746971000 }, blob_len = 10
+Blob ID: BlobId { digest: [98, 180, 101, 37, 253, 42, 137, 156, 153, 146, 202, 198, 213, 31, 199, 246, 247, 216, 67, 54, 202, 84, 231, 33, 34, 233, 67, 114, 137, 242, 90, 133], timestamp: 1717495124746971000 },
+Batch Number: 143124593728914250,
+Batch Index: 10
+ICStorage::save_blob(): success: cid = hxctj-oiaaa-aaaap-qhltq-cai
+ICStorage::save_blob(): success: cid = v3y75-6iaaa-aaaak-qikaa-cai
+第 15 个Batch
+ICStorage::save_blob(): blob_id = BlobId { digest: [210, 133, 171, 219, 241, 246, 51, 38, 165, 153, 61, 75, 18, 188, 111, 172, 193, 68, 58, 62, 7, 198, 168, 58, 143, 200, 59, 70, 34, 211, 203, 240], timestamp: 1717495130033635000 }, blob_len = 10
+Blob ID: BlobId { digest: [210, 133, 171, 219, 241, 246, 51, 38, 165, 153, 61, 75, 18, 188, 111, 172, 193, 68, 58, 62, 7, 198, 168, 58, 143, 200, 59, 70, 34, 211, 203, 240], timestamp: 1717495130033635000 },
+Batch Number: 143124594169469583,
+Batch Index: 3
+ICStorage::save_blob(): success: cid = hxctj-oiaaa-aaaap-qhltq-cai
+ICStorage::save_blob(): success: cid = v3y75-6iaaa-aaaak-qikaa-cai
+第 16 个Batch
+ICStorage::save_blob(): blob_id = BlobId { digest: [251, 45, 144, 127, 231, 209, 121, 30, 14, 127, 156, 4, 3, 1, 86, 24, 99, 29, 9, 246, 174, 45, 243, 89, 170, 113, 195, 217, 67, 194, 139, 201], timestamp: 1717495136382086000 }, blob_len = 10
+Blob ID: BlobId { digest: [251, 45, 144, 127, 231, 209, 121, 30, 14, 127, 156, 4, 3, 1, 86, 24, 99, 29, 9, 246, 174, 45, 243, 89, 170, 113, 195, 217, 67, 194, 139, 201], timestamp: 1717495136382086000 },
+Batch Number: 143124594698507166,
+Batch Index: 6
+ICStorage::save_blob(): success: cid = hxctj-oiaaa-aaaap-qhltq-cai
+ICStorage::save_blob(): success: cid = v3y75-6iaaa-aaaak-qikaa-cai
+第 17 个Batch
+ICStorage::save_blob(): blob_id = BlobId { digest: [134, 143, 205, 83, 251, 208, 173, 241, 32, 145, 114, 111, 111, 4, 237, 66, 32, 198, 127, 121, 223, 168, 123, 29, 45, 181, 52, 88, 2, 43, 125, 218], timestamp: 1717495142872674000 }, blob_len = 10
+Blob ID: BlobId { digest: [134, 143, 205, 83, 251, 208, 173, 241, 32, 145, 114, 111, 111, 4, 237, 66, 32, 198, 127, 121, 223, 168, 123, 29, 45, 181, 52, 88, 2, 43, 125, 218], timestamp: 1717495142872674000 },
+Batch Number: 143124595239389500,
+Batch Index: 0
+ICStorage::save_blob(): success: cid = hxctj-oiaaa-aaaap-qhltq-cai
+ICStorage::save_blob(): success: cid = v3y75-6iaaa-aaaak-qikaa-cai
+第 18 个Batch
+ICStorage::save_blob(): blob_id = BlobId { digest: [39, 56, 22, 250, 234, 63, 212, 179, 180, 28, 145, 107, 208, 200, 46, 68, 89, 37, 174, 243, 237, 216, 252, 222, 162, 97, 99, 221, 172, 176, 157, 89], timestamp: 1717495150008560000 }, blob_len = 10
+Blob ID: BlobId { digest: [39, 56, 22, 250, 234, 63, 212, 179, 180, 28, 145, 107, 208, 200, 46, 68, 89, 37, 174, 243, 237, 216, 252, 222, 162, 97, 99, 221, 172, 176, 157, 89], timestamp: 1717495150008560000 },
+Batch Number: 143124595834046666,
+Batch Index: 6
+ICStorage::save_blob(): success: cid = hxctj-oiaaa-aaaap-qhltq-cai
+ICStorage::save_blob(): success: cid = v3y75-6iaaa-aaaak-qikaa-cai
+第 19 个Batch
+ICStorage::save_blob(): blob_id = BlobId { digest: [89, 190, 138, 218, 219, 71, 135, 3, 96, 12, 25, 114, 246, 64, 247, 76, 238, 96, 94, 44, 106, 205, 10, 31, 230, 188, 209, 240, 217, 146, 163, 63], timestamp: 1717495155949764000 }, blob_len = 10
+Blob ID: BlobId { digest: [89, 190, 138, 218, 219, 71, 135, 3, 96, 12, 25, 114, 246, 64, 247, 76, 238, 96, 94, 44, 106, 205, 10, 31, 230, 188, 209, 240, 217, 146, 163, 63], timestamp: 1717495155949764000 },
+Batch Number: 143124596329147000,
+Batch Index: 0
+ICStorage::save_blob(): success: cid = hxctj-oiaaa-aaaap-qhltq-cai
+ICStorage::save_blob(): success: cid = v3y75-6iaaa-aaaak-qikaa-cai
+第 20 个Batch
+ICStorage::save_blob(): blob_id = BlobId { digest: [235, 117, 188, 136, 76, 138, 65, 56, 154, 67, 134, 219, 121, 77, 176, 125, 46, 248, 80, 19, 210, 193, 123, 106, 97, 113, 44, 208, 40, 208, 126, 217], timestamp: 1717495161416122000 }, blob_len = 10
+Blob ID: BlobId { digest: [235, 117, 188, 136, 76, 138, 65, 56, 154, 67, 134, 219, 121, 77, 176, 125, 46, 248, 80, 19, 210, 193, 123, 106, 97, 113, 44, 208, 40, 208, 126, 217], timestamp: 1717495161416122000 },
+Batch Number: 143124596784676833,
+Batch Index: 13
+ICStorage::save_blob(): success: cid = hxctj-oiaaa-aaaap-qhltq-cai
+ICStorage::save_blob(): success: cid = v3y75-6iaaa-aaaak-qikaa-cai
+第 21 个Batch
+ICStorage::save_blob(): blob_id = BlobId { digest: [249, 20, 159, 144, 79, 215, 86, 47, 244, 3, 237, 70, 108, 62, 162, 140, 224, 176, 85, 246, 173, 7, 114, 191, 18, 34, 97, 232, 4, 56, 20, 153], timestamp: 1717495167491779000 }, blob_len = 10
+Blob ID: BlobId { digest: [249, 20, 159, 144, 79, 215, 86, 47, 244, 3, 237, 70, 108, 62, 162, 140, 224, 176, 85, 246, 173, 7, 114, 191, 18, 34, 97, 232, 4, 56, 20, 153], timestamp: 1717495167491779000 },
+Batch Number: 143124597290981583,
+Batch Index: 3
+ICStorage::save_blob(): success: cid = hxctj-oiaaa-aaaap-qhltq-cai
+ICStorage::save_blob(): success: cid = v3y75-6iaaa-aaaak-qikaa-cai
+第 22 个Batch
+ICStorage::save_blob(): blob_id = BlobId { digest: [87, 246, 39, 136, 54, 161, 170, 178, 91, 197, 106, 107, 210, 77, 229, 227, 214, 195, 154, 202, 64, 90, 71, 209, 147, 206, 42, 184, 206, 66, 104, 8], timestamp: 1717495172889633000 }, blob_len = 10
+Blob ID: BlobId { digest: [87, 246, 39, 136, 54, 161, 170, 178, 91, 197, 106, 107, 210, 77, 229, 227, 214, 195, 154, 202, 64, 90, 71, 209, 147, 206, 42, 184, 206, 66, 104, 8], timestamp: 1717495172889633000 },
+Batch Number: 143124597740802750,
+Batch Index: 10
+ICStorage::save_blob(): success: cid = hxctj-oiaaa-aaaap-qhltq-cai
+ICStorage::save_blob(): success: cid = v3y75-6iaaa-aaaak-qikaa-cai
+第 23 个Batch
+ICStorage::save_blob(): blob_id = BlobId { digest: [10, 90, 118, 238, 18, 65, 177, 198, 204, 116, 44, 90, 246, 159, 253, 252, 163, 203, 65, 146, 24, 86, 45, 81, 177, 68, 8, 54, 13, 142, 54, 91], timestamp: 1717495177984139000 }, blob_len = 10
+Blob ID: BlobId { digest: [10, 90, 118, 238, 18, 65, 177, 198, 204, 116, 44, 90, 246, 159, 253, 252, 163, 203, 65, 146, 24, 86, 45, 81, 177, 68, 8, 54, 13, 142, 54, 91], timestamp: 1717495177984139000 },
+Batch Number: 143124598165344916,
+Batch Index: 16
+ICStorage::save_blob(): success: cid = hxctj-oiaaa-aaaap-qhltq-cai
+ICStorage::save_blob(): success: cid = v3y75-6iaaa-aaaak-qikaa-cai
+
+//// 事实证明，即使是用timestamp也不能保证是按照时间轮转的，所以可以选一个平均映射的函数
+
+
+--------------------
+获取Blob
+第 0 个Batch
+Blob ID: BlobId { digest: [233, 89, 180, 73, 46, 143, 126, 166, 231, 125, 28, 129, 237, 3, 50, 141, 230, 238, 53, 54, 221, 62, 61, 216, 140, 97, 8, 167, 166, 90, 20, 13], timestamp: 1717495037205054000 },
+Batch Number: 143124586433754500,
+Batch Index: 0
+ICStorage::get_blob(): blob_id = BlobId { digest: [233, 89, 180, 73, 46, 143, 126, 166, 231, 125, 28, 129, 237, 3, 50, 141, 230, 238, 53, 54, 221, 62, 61, 216, 140, 97, 8, 167, 166, 90, 20, 13], timestamp: 1717495037205054000 }
+Error: ICStorage: digest mismatch:
+blob_id.digest = [233, 89, 180, 73, 46, 143, 126, 166, 231, 125, 28, 129, 237, 3, 50, 141, 230, 238, 53, 54, 221, 62, 61, 216, 140, 97, 8, 167, 166, 90, 20, 13],
+actual = [243, 132, 86, 42, 55, 11, 255, 96, 33, 94, 109, 123, 6, 241, 204, 161, 60, 6, 245, 175, 191, 127, 77, 53, 227, 165, 112, 224, 234, 181, 228, 226]

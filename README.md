@@ -9,3 +9,9 @@
 - 实现功能
 - 测试
 - 优化
+
+新版本：
+
+1. client upload部分写完并测试
+2. canister适配
+3. server适配
