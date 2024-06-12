@@ -4,7 +4,7 @@ use candid::{candid_method, Principal};
 use ic_cdk::{caller, print, spawn};
 use ic_cdk_macros::*;
 use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
-use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap};
+use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap, StableMinHeap};
 use serde::{Deserialize, Serialize};
 
 use signature_management::SignatureQueue;
@@ -12,12 +12,15 @@ use signature_management::SignatureQueue;
 use crate::batch_blob::BatchCommit;
 use crate::blob_id::BlobId;
 use crate::signature_management::{PublicKeyReply, SignatureReply};
-use crate::time_heap::TimeHeap;
+use crate::time_heap::handle_time_heap;
+use crate::upload::BlobChunk;
 
 mod batch_blob;
 mod blob_id;
+mod merkle_tree;
 mod signature_management;
 mod time_heap;
+mod upload;
 
 type Memory = VirtualMemory<DefaultMemoryImpl>;
 
@@ -35,13 +38,14 @@ thread_local! {
     );
 
     // time heap
-    static TIMEHEAP: RefCell<TimeHeap> = RefCell::new(TimeHeap::new());
-
-    // commitments
-    static BATCH: RefCell<BatchCommit> = RefCell::new(BatchCommit::new());
+    static TIMEHEAP: RefCell<StableMinHeap<BlobId ,Memory>> = RefCell::new(
+        StableMinHeap::init(
+            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(1))),
+        ).unwrap()
+    );
 
     // signature deque
-    static SIGNATURES: RefCell<SignatureQueue> = RefCell::new(SignatureQueue::new());
+    static SIGNATURES: RefCell<String> = RefCell::new(String::new());
 
     // elie's local identity
     static OWNER: RefCell<Principal> = RefCell::new(Principal::from_text("ytoqu-ey42w-sb2ul-m7xgn-oc7xo-i4btp-kuxjc-b6pt4-dwdzu-kfqs4-nae").unwrap());
@@ -49,6 +53,7 @@ thread_local! {
 
 // Retrieves the value associated with the given key if it exists.
 // Return vec![] if key doesn't exit
+// todo: 当前query最大是3M，所以暂时没有分片
 #[query(name = "get_blob")]
 #[candid_method(query)]
 fn get_blob(key: String) -> Vec<u8> {
@@ -58,33 +63,25 @@ fn get_blob(key: String) -> Vec<u8> {
 // Inserts an entry into the map and returns the previous value of the key if it exists.
 #[update(name = "save_blob")]
 #[candid_method]
-async fn save_blob(key: String, value: Vec<u8>) -> Result<(), String> {
+async fn save_blob(chunk: BlobChunk) -> Result<(), String> {
     assert!(check_caller(caller()), "only owner can save blob");
-    let blob_id: BlobId = serde_json::from_str(&key).unwrap();
 
-    let commits = MAP.with(|p| {
-        // 0. remove previous value from time heap and stable tree
-        // 1. insert new value into time heap and tree
-        TIMEHEAP.with(|t| {
-            // insert new blob id into time heap and stable tree
-            t.borrow_mut().insert(blob_id);
-            p.borrow_mut().insert(key, value);
+    // handle time heap
+    let digest = chunk.digest.clone();
+    let timestamp = chunk.timestamp;
+    let expired_key = TIMEHEAP.with(|t| handle_time_heap(t.borrow_mut(), digest, timestamp));
 
-            if let Some(previous_id) = t.borrow_mut().remove_expired() {
-                let key = serde_json::to_string(&previous_id.0).unwrap();
-                p.borrow_mut().remove(&key);
-            }
-        });
+    // handle upload
+    MAP.with(|m| {
+        // remove expired blob
+        if let Some(expired_blob) = expired_key {
+            m.borrow_mut().remove(&expired_blob.digest);
+        }
 
-        // commit to batch and return commits
-        BATCH.with(|b| b.borrow_mut().insert(blob_id))
+        upload::handle_upload(m.borrow_mut(), chunk)
     });
 
-    // check if you should get signature
-    // todo : 要清楚对什么东西进行sign, 用commits
-    if let Some(_commits) = commits {
-        spawn(batch_sign(_commits))
-    }
+    // todo: update signature
 
     Ok(())
 }

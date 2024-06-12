@@ -1,43 +1,56 @@
-use std::cmp::Reverse;
-use std::collections::BinaryHeap;
+extern crate ic_stable_structures;
 
-use ic_cdk::print;
+use std::cell::RefMut;
+
+use candid::CandidType;
+use ic_stable_structures::{StableMinHeap, Storable};
+use serde::{Deserialize, Serialize};
 
 use crate::blob_id::BlobId;
+use crate::Memory;
 
-const CANISTER_THRESHOLD: usize = 24; //30240
+pub const CANISTER_THRESHOLD: u64 = 30240;
 
-pub struct TimeHeap {
-    heap: BinaryHeap<Reverse<BlobId>>,
+// 插入新的key到time heap
+pub fn handle_time_heap(
+    mut heap: RefMut<StableMinHeap<BlobId, Memory>>,
+    digest: String,
+    timestamp: u128,
+) -> Option<BlobId> {
+    let blob_id = BlobId { digest, timestamp };
+
+    // 插入heap
+    insert_id(&mut heap, blob_id.clone());
+
+    // 删除过期的blob, 返回过期的blob
+    remove_expired(&mut heap)
 }
 
-impl TimeHeap {
-    pub fn new() -> Self {
-        TimeHeap {
-            heap: BinaryHeap::new(),
-        }
-    }
+pub fn insert_id(heap: &mut RefMut<StableMinHeap<BlobId, Memory>>, item: BlobId) {
+    print!(
+        "Insert {:?} to time heap: result: {:?}\n",
+        item,
+        heap.push(&item)
+    )
+}
 
-    pub fn insert(&mut self, item: BlobId) {
-        print(format!("Insert item to time heap: {:?}", item));
-        self.heap.push(Reverse(item));
+pub fn remove_expired(heap: &mut RefMut<StableMinHeap<BlobId, Memory>>) -> Option<BlobId> {
+    // 如果数量超过了阈值，就删除最早的blob
+    if heap.len() > CANISTER_THRESHOLD {
+        let expired_item = heap.pop();
+        return expired_item;
     }
-
-    pub fn remove_expired(&mut self) -> Option<Reverse<BlobId>> {
-        // 如果数量超过了阈值，就删除最早的blob
-        if self.heap.len() > CANISTER_THRESHOLD {
-            let expired_item = self.heap.pop();
-            print(format!("Remove expired item: {:?}", expired_item));
-            return expired_item;
-        }
-        None
-    }
+    None
 }
 
 #[cfg(test)]
 mod test {
+    use std::cell::RefCell;
     use std::thread::sleep;
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+    use ic_stable_structures::memory_manager::{MemoryId, MemoryManager};
+    use ic_stable_structures::DefaultMemoryImpl;
 
     use crate::blob_id::BlobId;
 
@@ -46,18 +59,24 @@ mod test {
     // before running this test, set CANISTER_THRESHOLD = 1;
     #[test]
     fn test_time_heap() {
-        let mut heap = TimeHeap::new();
+        let memory_mng: RefCell<MemoryManager<DefaultMemoryImpl>> =
+            RefCell::new(MemoryManager::init(DefaultMemoryImpl::default()));
+
+        let heap: RefCell<StableMinHeap<BlobId, Memory>> =
+            RefCell::new(StableMinHeap::init(memory_mng.borrow().get(MemoryId::new(0))).unwrap());
+
         // add the first blob
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
         let first_blob = BlobId {
-            digest: [0; 32],
+            digest: "first blob".to_string(),
             timestamp: now,
         };
-        heap.insert(first_blob.clone());
-        assert_eq!(heap.heap.len(), 1);
+
+        super::insert_id(&mut heap.borrow_mut(), first_blob.clone());
+        assert_eq!(heap.borrow().len(), 1);
 
         sleep(Duration::from_secs(1));
 
@@ -67,14 +86,17 @@ mod test {
             .unwrap()
             .as_nanos();
         let second_blob = BlobId {
-            digest: [0; 32],
+            digest: "second blob".to_string(),
             timestamp: now,
         };
-        heap.insert(second_blob.clone());
-        assert_eq!(heap.heap.len(), 2);
+        super::insert_id(&mut heap.borrow_mut(), second_blob.clone());
+        assert_eq!(heap.borrow().len(), 2);
 
-        assert_eq!(heap.remove_expired().unwrap(), Reverse(first_blob));
-        assert_eq!(heap.heap.len(), 1);
-        assert_eq!(heap.remove_expired(), None);
+        assert_eq!(
+            super::remove_expired(&mut heap.borrow_mut()).unwrap(),
+            first_blob
+        );
+        assert_eq!(heap.borrow().len(), 1);
+        assert_eq!(super::remove_expired(&mut heap.borrow_mut()), None);
     }
 }

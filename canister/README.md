@@ -34,3 +34,6 @@
         2. 主网测试 + 脚本
     4. candid interface generation [✓]
     5. time_heap 和 signature batch的持久化
+
+新版本:
+digest 作为唯一的key，可以辅以index

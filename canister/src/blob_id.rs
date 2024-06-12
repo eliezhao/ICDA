@@ -1,12 +1,17 @@
+use std::borrow::Cow;
 use std::cmp::Ordering;
 
-use candid::Deserialize;
+use candid::{CandidType, Decode, Deserialize, Encode};
+use ic_stable_structures::storable::Bound;
+use ic_stable_structures::Storable;
 use serde::Serialize;
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+use crate::time_heap::CANISTER_THRESHOLD;
+
+#[derive(CandidType, Serialize, Deserialize, Debug, Clone)]
 pub struct BlobId {
     /// Sha256 digest of the blob in hex format.
-    pub digest: [u8; 32],
+    pub digest: String, // hex encoded digest
 
     /// Time since epoch in nanos.
     pub timestamp: u128,
@@ -14,7 +19,7 @@ pub struct BlobId {
 
 impl BlobId {
     pub fn new() -> Self {
-        let digest = [0; 32];
+        let digest = String::new();
         let timestamp = 0;
         BlobId { digest, timestamp }
     }
@@ -38,4 +43,19 @@ impl Ord for BlobId {
     fn cmp(&self, other: &Self) -> Ordering {
         self.timestamp.cmp(&other.timestamp)
     }
+}
+
+impl Storable for BlobId {
+    fn to_bytes(&self) -> Cow<[u8]> {
+        Cow::Owned(Encode!(self).unwrap())
+    }
+
+    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+        Decode!(bytes.as_ref(), Self).unwrap()
+    }
+
+    const BOUND: Bound = Bound::Bounded {
+        max_size: CANISTER_THRESHOLD,
+        is_fixed_size: false,
+    };
 }

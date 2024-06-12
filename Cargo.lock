@@ -967,6 +967,7 @@ dependencies = [
  "ic-cdk-macros 0.13.2",
  "ic-stable-structures",
  "k256 0.12.0",
+ "rs_merkle",
  "serde",
  "serde_json",
  "sha2 0.10.8",
@@ -3883,6 +3884,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "rs_merkle"
+version = "1.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3b241d2e59b74ef9e98d94c78c47623d04c8392abaf82014dfd372a16041128f"
+dependencies = [
+ "sha2 0.10.8",
 ]
 
 [[package]]
