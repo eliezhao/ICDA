@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use crate::blob_id::BlobId;
 use crate::Memory;
 
-pub const CANISTER_THRESHOLD: u64 = 30240;
+pub const CANISTER_THRESHOLD: u32 = 30240;
 
 // 插入新的key到time heap
 pub fn handle_time_heap(
@@ -36,7 +36,7 @@ pub fn insert_id(heap: &mut RefMut<StableMinHeap<BlobId, Memory>>, item: BlobId)
 
 pub fn remove_expired(heap: &mut RefMut<StableMinHeap<BlobId, Memory>>) -> Option<BlobId> {
     // 如果数量超过了阈值，就删除最早的blob
-    if heap.len() > CANISTER_THRESHOLD {
+    if heap.len() > CANISTER_THRESHOLD as u64 {
         let expired_item = heap.pop();
         return expired_item;
     }
