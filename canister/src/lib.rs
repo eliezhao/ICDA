@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::ptr::hash;
 
 use candid::{candid_method, CandidType, Principal};
 use ic_cdk::{caller, print};
@@ -75,7 +76,7 @@ thread_local! {
     );
 }
 
-const QUERY_SIZE: usize = 2621440;
+const QUERY_SIZE: usize = 2621440; // 2.5 M
 
 // Retrieves the value associated with the given key if it exists.
 // Return vec![] if key doesn't exit
@@ -286,31 +287,34 @@ async fn update_signature() {
 
 // digest: blob's sha256 hash
 fn update_merkle_tree(digest: String) -> bool {
-    let hash: [u8; 32] = hex::decode(&digest).unwrap().try_into().unwrap();
-
-    // update merkle tree
-    MERKLE_TREE.with(|t| {
-        let mut tree = t.borrow_mut();
-        // insert blob's hash node
-        tree.insert(hash);
-    });
-
     let mut index = 0;
 
     // update index map
     // insert index到index map，这个index用来merkle tree做proof的时候用
-    INDEX_MAP.with(|m| {
-        let mut map = m.borrow_mut();
-        // 获取index
-        index = map.get(&"index".to_string()).unwrap_or_default();
+    INDEX_MAP.with_borrow_mut(|map| {
+        if let Some(i) = map.get(&digest) {
+            index = i;
+        } else {
+            let hash: [u8; 32] = hex::decode(&digest).unwrap().try_into().unwrap();
 
-        // index + 1
-        map.insert("index".to_string(), index + 1);
+            // 获取index
+            index = map.get(&"index".to_string()).unwrap_or_default();
 
-        // insert hash and index
-        map.insert(digest, index);
+            // index + 1
+            map.insert("index".to_string(), index + 1);
+
+            // insert hash and index
+            map.insert(digest, index);
+
+            // update merkle tree
+            MERKLE_TREE.with_borrow_mut(|t| {
+                // insert blob's hash node
+                t.insert(hash);
+            });
+        }
     });
 
+    //todo: 当该触发的时候，只用触发一次就行，
     // 当index & batch size == 0的时候，就commit一次merkle root，然后返回true
     index % SIGNATURE_BATCH_SIZE.with(|s| *s.borrow()) == 0
 }
