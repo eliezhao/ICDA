@@ -1,11 +1,16 @@
+type Blob = record { data : blob; next : opt nat64 };
+type BlobChunk = record {  total : nat64;  chunk : blob;  timestamp : nat;  digest : text;};
+type Confirmation = record {  signature : text;  digest : blob;  proof : vec blob;};
 type PublicKeyReply = record { public_key_hex : text };
 type Result = variant { Ok : PublicKeyReply; Err : text };
 type Result_1 = variant { Ok; Err : text };
-type SignatureReply = record { signature_hex : text };
 service : {
-  change_owner : (principal) -> ();
-  get_blob : (text) -> (blob) query;
-  get_signature : () -> (opt text);
-  public_key : () -> (Result);
-  save_blob : (text, blob) -> (Result_1);
-};
+    change_owner : (principal) -> ();
+    get_blob : (text) -> (Blob) query;
+    get_blob_with_index : (text, nat64) -> (Blob) query;
+    get_confirmation : (text) -> (opt Confirmation);
+    public_key : () -> (Result);
+    save_blob : (BlobChunk) -> (Result_1);
+    speed_up_confirmation : () -> ();
+    update_signature_batch_size : (nat32) -> ();
+}

@@ -17,14 +17,6 @@ pub struct BlobId {
     pub timestamp: u128,
 }
 
-impl BlobId {
-    pub fn new() -> Self {
-        let digest = String::new();
-        let timestamp = 0;
-        BlobId { digest, timestamp }
-    }
-}
-
 impl Eq for BlobId {}
 
 impl PartialEq<Self> for BlobId {

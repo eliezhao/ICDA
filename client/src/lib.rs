@@ -20,6 +20,8 @@ pub mod upload;
 pub const LEDGER: &str = "ryjl3-tyaaa-aaaaa-aaaba-cai";
 pub const CMC: &str = "rkp4c-7iaaa-aaaaa-aaaca-cai";
 
+mod test;
+
 // todo : 选10个合适的subnet，至少120G可用stable memory
 pub const SUBNETS: [&str; 10] =
     ["opn46-zyspe-hhmyp-4zu6u-7sbrh-dok77-m7dch-im62f-vyimr-a3n2c-4ae"; 10];

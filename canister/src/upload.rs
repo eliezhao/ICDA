@@ -26,8 +26,8 @@ pub struct BlobChunk {
     pub chunk: Vec<u8>,
 }
 
-// todo: 先方time heap，再放btree，这样可以直接把chunk放进来
-// todo: 分片串行上传 handle
+// 1. 第一次上传，则创建一个空的vec，大小为total
+// 2. 之后的上传，将chunk append到vec中
 pub fn handle_upload(mut map: RefMut<BTreeMap<String, Vec<u8>, Memory>>, chunk: &BlobChunk) {
     // 获取map中有无key - value
     if map.get(&chunk.digest).is_none() {
@@ -37,6 +37,6 @@ pub fn handle_upload(mut map: RefMut<BTreeMap<String, Vec<u8>, Memory>>, chunk: 
     }
 
     let mut value = map.get(&chunk.digest).unwrap();
-    value.extend(chunk.chunk.clone());
-    map.insert(chunk.digest.clone(), value);
+    value.extend_from_slice(&chunk.chunk);
+    let _ = map.insert(chunk.digest.clone(), value);
 }

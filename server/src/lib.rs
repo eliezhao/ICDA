@@ -3,7 +3,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde::{Deserialize, Serialize};
 use sha2::Digest;
 
-pub mod handle_blob;
 pub mod upload;
 
 pub mod disperser {

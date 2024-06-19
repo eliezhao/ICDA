@@ -183,3 +183,39 @@ ICStorage::get_blob(): blob_id = BlobId { digest: [233, 89, 180, 73, 46, 143, 12
 Error: ICStorage: digest mismatch:
 blob_id.digest = [233, 89, 180, 73, 46, 143, 126, 166, 231, 125, 28, 129, 237, 3, 50, 141, 230, 238, 53, 54, 221, 62, 61, 216, 140, 97, 8, 167, 166, 90, 20, 13],
 actual = [243, 132, 86, 42, 55, 11, 255, 96, 33, 94, 109, 123, 6, 241, 204, 161, 60, 6, 245, 175, 191, 127, 77, 53, 227, 165, 112, 224, 234, 181, 228, 226]
+
+
+--新版本test v2
+开始测试
+--------------------
+开始batch 1
+第 0 个Batch
+ICStorage::save_blob(): key = BlobKey { digest: "61e5c5b095d3a6bb3d7aed9bacf4762c3c59ff24e79358d1b85b6b9abd74f3d0", expiry_timestamp: 1719308104240568000, routing_info: RoutingInfo { total_size: 3145728, host_canisters: ["hxctj-oiaaa-aaaap-qhltq-cai", "v3y75-6iaaa-aaaak-qikaa-cai"] } }
+begin push hash: 61e5c5b095d3a6bb3d7aed9bacf4762c3c59ff24e79358d1b85b6b9abd74f3d0, index: 0 to canister: v3y75-6iaaa-aaaak-qikaa-cai
+begin push hash: 61e5c5b095d3a6bb3d7aed9bacf4762c3c59ff24e79358d1b85b6b9abd74f3d0, index: 0 to canister: hxctj-oiaaa-aaaap-qhltq-cai
+第 1 个Batch
+ICStorage::save_blob(): key = BlobKey { digest: "42fdc1f13f029976dbd727885a1e6826c1092256db50ed1dc0ca0fb446a67587", expiry_timestamp: 1719308104378435000, routing_info: RoutingInfo { total_size: 3145728, host_canisters: ["hxctj-oiaaa-aaaap-qhltq-cai", "v3y75-6iaaa-aaaak-qikaa-cai"] } }
+begin push hash: 42fdc1f13f029976dbd727885a1e6826c1092256db50ed1dc0ca0fb446a67587, index: 0 to canister: v3y75-6iaaa-aaaak-qikaa-cai
+begin push hash: 42fdc1f13f029976dbd727885a1e6826c1092256db50ed1dc0ca0fb446a67587, index: 0 to canister: hxctj-oiaaa-aaaap-qhltq-cai
+ICStorage::save_blob_chunk(): success: index = 0, cid = hxctj-oiaaa-aaaap-qhltq-cai
+begin push hash: 42fdc1f13f029976dbd727885a1e6826c1092256db50ed1dc0ca0fb446a67587, index: 1 to canister: hxctj-oiaaa-aaaap-qhltq-cai
+ICStorage::save_blob_chunk(): success: index = 0, cid = hxctj-oiaaa-aaaap-qhltq-cai
+begin push hash: 61e5c5b095d3a6bb3d7aed9bacf4762c3c59ff24e79358d1b85b6b9abd74f3d0, index: 1 to canister: hxctj-oiaaa-aaaap-qhltq-cai
+ICStorage::save_blob_chunk(): success: index = 0, cid = v3y75-6iaaa-aaaak-qikaa-cai
+begin push hash: 61e5c5b095d3a6bb3d7aed9bacf4762c3c59ff24e79358d1b85b6b9abd74f3d0, index: 1 to canister: v3y75-6iaaa-aaaak-qikaa-cai
+ICStorage::save_blob_chunk(): success: index = 0, cid = v3y75-6iaaa-aaaak-qikaa-cai
+begin push hash: 42fdc1f13f029976dbd727885a1e6826c1092256db50ed1dc0ca0fb446a67587, index: 1 to canister: v3y75-6iaaa-aaaak-qikaa-cai
+ICStorage::save_blob_chunk(): success: index = 1, cid = hxctj-oiaaa-aaaap-qhltq-cai
+begin push hash: 42fdc1f13f029976dbd727885a1e6826c1092256db50ed1dc0ca0fb446a67587, index: 2 to canister: hxctj-oiaaa-aaaap-qhltq-cai
+--------------------
+获取Blob
+第 0 个Batch
+ICStorage::get_blob(): blob digest = "61e5c5b095d3a6bb3d7aed9bacf4762c3c59ff24e79358d1b85b6b9abd74f3d0"
+ICStorage::get_blob(): blob digest = "61e5c5b095d3a6bb3d7aed9bacf4762c3c59ff24e79358d1b85b6b9abd74f3d0"
+ICStorage::get_blob(): blob digest not match
+key digest:[97, 229, 197, 176, 149, 211, 166, 187, 61, 122, 237, 155, 172, 244, 118, 44, 60, 89, 255, 36, 231, 147, 88, 209, 184, 91, 107, 154, 189, 116, 243, 208]
+get blob digest[178, 33, 36, 43, 197, 255, 67, 40, 57, 231, 72, 38, 152, 243, 42, 94, 53, 171, 114, 221, 3, 52, 14, 15, 255, 40, 202, 46, 108, 93, 156, 228]
+ICStorage::get_blob(): blob digest not match
+key digest:[97, 229, 197, 176, 149, 211, 166, 187, 61, 122, 237, 155, 172, 244, 118, 44, 60, 89, 255, 36, 231, 147, 88, 209, 184, 91, 107, 154, 189, 116, 243, 208]
+get blob digest[178, 33, 36, 43, 197, 255, 67, 40, 57, 231, 72, 38, 152, 243, 42, 94, 53, 171, 114, 221, 3, 52, 14, 15, 255, 40, 202, 46, 108, 93, 156, 228]
+Error: ICStorage::get_blob(): failed to get blob

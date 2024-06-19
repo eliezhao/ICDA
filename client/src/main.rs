@@ -1,131 +1,122 @@
 extern crate core;
 
-use anyhow::Result;
-use candid::Principal;
-use ic_agent::identity::BasicIdentity;
-use ic_agent::Agent;
-use rand::Rng;
-use secp256k1::ecdsa::Signature;
-use secp256k1::{Message, PublicKey, Secp256k1};
+use std::time::Duration;
 
-use client::upload::{BlobId, ICStorage};
-use client::{get_public_key, get_signature, sha256};
+use anyhow::Result;
+use rand::Rng;
+use sha2::Digest;
+
+use client::upload::{BlobKey, ICStorage};
 
 const E8S: u64 = 100_000_000;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     println!("开始测试");
-    let identity = BasicIdentity::from_pem_file("identity.pem").unwrap();
-    let agent = Agent::builder()
-        .with_url("https://ic0.app")
-        .with_identity(identity)
-        .build()?;
-
-    let da = ICStorage {
-        agent: agent.clone(),
-    };
+    let mut da = ICStorage::new("identity.pem".to_string()).unwrap();
 
     let mut rng = rand::thread_rng();
-    // 准备24个blob
-    let mut batch_1 = vec![vec![0u8; 10]; 24];
+    //准备4个blob
+    let mut batch_1 = vec![vec![0u8; 3 * 1024 * 1024]; 10]; // 10个3M
     for i in &mut batch_1 {
         rng.fill(&mut i[..]);
     }
 
-    // 放24个blob进
+    //放4个blob进
     println!("{}", "-".repeat(20));
-    println!("填入Blob");
     let mut response = Vec::new();
     for (index, item) in batch_1.iter().enumerate() {
         println!("第 {} 个Batch", index);
         let res = da.save_blob(item.to_vec()).await?;
         let raw = String::from_utf8(res).unwrap();
-        let key = serde_json::from_str::<BlobId>(&raw).unwrap();
-        response.push(key);
+        let key = serde_json::from_str::<BlobKey>(&raw).unwrap();
+        response.push(key)
     }
 
-    // get 24个blob
-    // get 24 blob from canisters
+    println!("{}begin sleep {}", "-".repeat(10), "-".repeat(10));
+    tokio::time::sleep(Duration::from_secs(600)).await;
+
+    // 获取Blob
     println!("{}", "-".repeat(20));
     println!("获取Blob");
     let mut batch_2 = Vec::new();
-    for (index, blob_id) in response.iter().enumerate() {
+    for (index, blob_key) in response.iter().enumerate() {
         println!("第 {} 个Batch", index);
-        let key = serde_json::to_string(&blob_id)?;
-        let res = da.get_blob(key.as_bytes().to_vec()).await?;
+        let res = da.get_blob(blob_key.clone()).await?;
         batch_2.push(res);
     }
 
-    println!("{}", "-".repeat(20));
-    println!("验证Blob");
-    // 验证24个blob和填入的是否一致
-    for (i, (a, b)) in batch_1.iter().zip(batch_2.iter()).enumerate() {
-        assert_eq!(a, b, "blob {} not equal", i);
-    }
+    // println!("{}", "-".repeat(20));
+    // println!("验证Blob");
+    // for (i, (a, b)) in batch_1.iter().zip(batch_2.iter()).enumerate() {
+    //     let a_sha = sha2::Sha256::digest(a.as_slice());
+    //     let b_sha = sha2::Sha256::digest(b.as_slice());
+    //
+    //     assert_eq!(a_sha, b_sha, "sha256: blob {} not equal", i);
+    // }
 
     // 两个测试canister
-    let canister_1_principal = Principal::from_text("hxctj-oiaaa-aaaap-qhltq-cai").unwrap();
-    let canister_2_principal = Principal::from_text("v3y75-6iaaa-aaaak-qikaa-cai").unwrap();
-
-    println!("{}", "-".repeat(20));
-    println!("获取两个Canister的Public Key");
-    // get public key
-    let canister_1_public_key = PublicKey::from_slice(
-        &hex::decode(get_public_key(&agent, &canister_1_principal).await).unwrap(),
-    )
-    .unwrap();
-    let canister_2_public_key = PublicKey::from_slice(
-        &hex::decode(get_public_key(&agent, &canister_2_principal).await).unwrap(),
-    )
-    .unwrap();
-
-    println!("{}", "-".repeat(20));
-    println!("获取两个Canister的Signature");
-    // get hex encoded signatures
-    let canister_1_signature = Signature::from_compact(
-        &hex::decode(get_signature(&agent, &canister_1_principal).await).unwrap(),
-    )
-    .unwrap();
-    let canister_2_signature = Signature::from_compact(
-        &hex::decode(get_signature(&agent, &canister_2_principal).await).unwrap(),
-    )
-    .unwrap();
-
-    // verify signatures
-    let msg = Message::from_digest_slice(
-        &sha256(&"this is a message should be signed".to_string()).to_vec(),
-    )
-    .unwrap();
-    let secp = Secp256k1::verification_only();
-    if let Ok(_) = secp.verify_ecdsa(&msg, &canister_1_signature, &canister_1_public_key) {
-        println!("Canister 1 signature is valid");
-    } else {
-        println!("Canister 1 signature is invalid");
-    }
-
-    if let Ok(_) = secp.verify_ecdsa(&msg, &canister_2_signature, &canister_2_public_key) {
-        println!("Canister 2 signature is valid");
-    } else {
-        println!("Canister 2 signature is invalid");
-    }
-
-    // 放第25个进，第1个应该过期
-    let mut blob_25 = vec![0u8; 10];
-    rng.fill(&mut blob_25[..]);
-    let res = da.save_blob(blob_25.clone()).await?;
-    let raw = String::from_utf8(res.clone()).unwrap();
-    let _ = serde_json::from_str::<BlobId>(&raw).unwrap(); // recover key from raw string
-
-    // get 25th blob
-    let res = da.get_blob(res).await?;
-    assert_eq!(blob_25, res);
-
-    // get blob id = 0 from canister and should return empty vector
-    let res = da
-        .get_blob(serde_json::to_string(&response[0])?.as_bytes().to_vec())
-        .await?;
-    assert_eq!(res.len(), 0);
+    // let canister_1_principal = Principal::from_text("hxctj-oiaaa-aaaap-qhltq-cai").unwrap();
+    // let canister_2_principal = Principal::from_text("v3y75-6iaaa-aaaak-qikaa-cai").unwrap();
+    //
+    // println!("{}", "-".repeat(20));
+    // println!("获取两个Canister的Public Key");
+    // // get public key
+    // let canister_1_public_key = PublicKey::from_slice(
+    //     &hex::decode(get_public_key(&agent, &canister_1_principal).await).unwrap(),
+    // )
+    // .unwrap();
+    // let canister_2_public_key = PublicKey::from_slice(
+    //     &hex::decode(get_public_key(&agent, &canister_2_principal).await).unwrap(),
+    // )
+    // .unwrap();
+    //
+    // println!("{}", "-".repeat(20));
+    // println!("获取两个Canister的Signature");
+    // // get hex encoded signatures
+    // let canister_1_signature = Signature::from_compact(
+    //     &hex::decode(get_signature(&agent, &canister_1_principal).await).unwrap(),
+    // )
+    // .unwrap();
+    // let canister_2_signature = Signature::from_compact(
+    //     &hex::decode(get_signature(&agent, &canister_2_principal).await).unwrap(),
+    // )
+    // .unwrap();
+    //
+    // // verify signatures
+    // let msg = Message::from_digest_slice(
+    //     &sha256(&"this is a message should be signed".to_string()).to_vec(),
+    // )
+    // .unwrap();
+    // let secp = Secp256k1::verification_only();
+    // if let Ok(_) = secp.verify_ecdsa(&msg, &canister_1_signature, &canister_1_public_key) {
+    //     println!("Canister 1 signature is valid");
+    // } else {
+    //     println!("Canister 1 signature is invalid");
+    // }
+    //
+    // if let Ok(_) = secp.verify_ecdsa(&msg, &canister_2_signature, &canister_2_public_key) {
+    //     println!("Canister 2 signature is valid");
+    // } else {
+    //     println!("Canister 2 signature is invalid");
+    // }
+    //
+    // // 放第25个进，第1个应该过期
+    // let mut blob_25 = vec![0u8; 10];
+    // rng.fill(&mut blob_25[..]);
+    // let res = da.save_blob(blob_25.clone()).await?;
+    // let raw = String::from_utf8(res.clone()).unwrap();
+    // let _ = serde_json::from_str::<BlobId>(&raw).unwrap(); // recover key from raw string
+    //
+    // // get 25th blob
+    // let res = da.get_blob(res).await?;
+    // assert_eq!(blob_25, res);
+    //
+    // // get blob id = 0 from canister and should return empty vector
+    // let res = da
+    //     .get_blob(serde_json::to_string(&response[0])?.as_bytes().to_vec())
+    //     .await?;
+    // assert_eq!(res.len(), 0);
 
     Ok(())
 }

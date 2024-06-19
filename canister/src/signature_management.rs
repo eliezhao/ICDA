@@ -1,4 +1,3 @@
-use std::collections::VecDeque;
 use std::str::FromStr;
 
 use candid::{CandidType, Deserialize, Principal};
@@ -51,35 +50,6 @@ pub struct EcdsaKeyId {
 pub enum EcdsaCurve {
     #[serde(rename = "secp256k1")]
     Secp256k1,
-}
-
-#[derive(CandidType, Serialize, Debug, Clone)]
-pub struct SignatureQueue {
-    queue: VecDeque<String>,
-}
-
-impl SignatureQueue {
-    pub fn new() -> Self {
-        Self {
-            queue: VecDeque::new(),
-        }
-    }
-
-    // 有一个sig就插入queue的back
-    pub fn insert(&mut self, hex_sig: String) {
-        self.queue.push_back(hex_sig);
-    }
-
-    pub fn pop(&mut self) -> Option<String> {
-        self.queue.pop_front()
-    }
-}
-
-pub fn sha256(input: &String) -> [u8; 32] {
-    use sha2::Digest;
-    let mut hasher = sha2::Sha256::new();
-    hasher.update(input.as_bytes());
-    hasher.finalize().into()
 }
 
 pub fn mgmt_canister_id() -> CanisterId {

@@ -1,16 +1,14 @@
 use std::cell::RefCell;
 
 use candid::{candid_method, CandidType, Principal};
-use ic_cdk::{caller, print, spawn};
+use ic_cdk::{caller, print};
 use ic_cdk_macros::*;
 use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
 use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap, StableMinHeap};
 use k256::pkcs8::der::Encode;
 use rs_merkle::algorithms::Sha256;
-use rs_merkle::{MerkleProof, MerkleTree};
+use rs_merkle::MerkleTree;
 use serde::{Deserialize, Serialize};
-
-use signature_management::SignatureQueue;
 
 use crate::blob_id::BlobId;
 use crate::signature_management::{PublicKeyReply, SignatureReply};
@@ -39,7 +37,7 @@ struct Blob {
 
 thread_local! {
     // 几轮sign一次，因为是rr，所以1=20个canister
-    static SIGNATURE_BATCH_SIZE: RefCell<u32> = RefCell::new(2); // 2 round => 40s,1 round about 20s[20 subnet]
+    static SIGNATURE_BATCH_SIZE: RefCell<u32> = const { RefCell::new(2) }; // 2 round => 40s,1 round about 20s[20 subnet]
 
     // The memory manager is used for simulating multiple memories. Given a `MemoryId` it can
     // return a memory that can be used by stable structures.
@@ -64,7 +62,7 @@ thread_local! {
     );
 
     // canister signature: hex encoded secp256k1 signature
-    static SIGNATURE: RefCell<String> = RefCell::new(String::new());
+    static SIGNATURE: RefCell<String> = const { RefCell::new(String::new()) };
 
     // blob hash merkle tree
     static MERKLE_TREE: RefCell<MerkleTree<Sha256>> = RefCell::new(MerkleTree::new());
@@ -89,13 +87,12 @@ fn get_blob(key: String) -> Blob {
 
     MAP.with_borrow(|m| {
         if let Some(data) = m.get(&key) {
-            // 判断是否大于3M
-            if data.len() > 3 * 1024 * 1024 {
-                // 大于3M则分片，串行get
+            if data.len() > QUERY_SIZE {
+                // 大于Query则分片，串行get
                 blob.data.extend_from_slice(&data[..QUERY_SIZE]);
                 blob.next = Some(1)
             } else {
-                blob.data = data.clone();
+                blob.data = data;
             }
         }
     });
@@ -130,10 +127,10 @@ async fn save_blob(chunk: BlobChunk) -> Result<(), String> {
     assert!(check_caller(caller()), "only owner can save blob");
 
     // 1. insert new blob id into time heap
-    // 2. remote expired blob id from time heap
+    // 2. remove expired blob id from time heap
     // 3. if expired blob id exists, return expired key
-    let expired_key = TIMEHEAP
-        .with(|t| handle_time_heap(t.borrow_mut(), (&chunk).digest.clone(), (&chunk).timestamp));
+    let expired_key =
+        TIMEHEAP.with(|t| handle_time_heap(t.borrow_mut(), chunk.digest.clone(), chunk.timestamp));
 
     // 1. insert blob share into map
     // 2. if expired blob id exists, remove it from map
@@ -191,7 +188,7 @@ fn get_confirmation(key: String) -> Option<Confirmation> {
     if let Some(node_index) = INDEX_MAP.with_borrow(|m| m.get(&key)) {
         MERKLE_TREE.with_borrow(|t| {
             // get proof
-            proof = t.proof(&vec![node_index as usize]).proof_hashes().to_vec();
+            proof = t.proof(&[node_index as usize]).proof_hashes().to_vec();
 
             // get root
             root = t.root();
@@ -229,7 +226,37 @@ fn update_signature_batch_size(size: u32) {
         check_caller(caller()),
         "only owner can update signature batch size"
     );
-    SIGNATURE_BATCH_SIZE.with(|s| *s.borrow_mut() = size);
+    SIGNATURE_BATCH_SIZE.with_borrow_mut(|s| *s = size);
+}
+
+#[update(name = "change_owner")]
+#[candid_method]
+fn change_owner(new_owner: Principal) {
+    assert!(check_caller(caller()), "only owner can change owner");
+    OWNER.with(|o| *o.borrow_mut() = new_owner);
+}
+
+// sign [u8;32]
+async fn sign(hash: Vec<u8>) -> Result<SignatureReply, String> {
+    let request = signature_management::SignWithECDSA {
+        message_hash: hash,
+        derivation_path: vec![],
+        key_id: signature_management::EcdsaKeyIds::ProductionKey1.to_key_id(),
+    };
+
+    let (response,): (signature_management::SignWithECDSAReply,) =
+        ic_cdk::api::call::call_with_payment(
+            signature_management::mgmt_canister_id(),
+            "sign_with_ecdsa",
+            (request,),
+            25_000_000_000,
+        )
+        .await
+        .map_err(|e| format!("sign_with_ecdsa failed {}", e.1))?;
+
+    Ok(SignatureReply {
+        signature_hex: hex::encode(response.signature),
+    })
 }
 
 // 1. update merkle root
@@ -257,45 +284,9 @@ async fn update_signature() {
     }
 }
 
-// sign [u8;32]
-async fn sign(hash: Vec<u8>) -> Result<SignatureReply, String> {
-    let request = signature_management::SignWithECDSA {
-        message_hash: hash,
-        derivation_path: vec![],
-        key_id: signature_management::EcdsaKeyIds::ProductionKey1.to_key_id(),
-    };
-
-    let (response,): (signature_management::SignWithECDSAReply,) =
-        ic_cdk::api::call::call_with_payment(
-            signature_management::mgmt_canister_id(),
-            "sign_with_ecdsa",
-            (request,),
-            25_000_000_000,
-        )
-        .await
-        .map_err(|e| format!("sign_with_ecdsa failed {}", e.1))?;
-
-    Ok(SignatureReply {
-        signature_hex: hex::encode(response.signature),
-    })
-}
-
-#[update(name = "change_owner")]
-#[candid_method]
-fn change_owner(new_owner: Principal) {
-    assert!(check_caller(caller()), "only owner can change owner");
-    OWNER.with(|o| *o.borrow_mut() = new_owner);
-}
-
-fn check_caller(c: Principal) -> bool {
-    OWNER.with(|o| o.borrow().eq(&c))
-}
-
 // digest: blob's sha256 hash
 fn update_merkle_tree(digest: String) -> bool {
     let hash: [u8; 32] = hex::decode(&digest).unwrap().try_into().unwrap();
-
-    let mut index = 0;
 
     // update merkle tree
     MERKLE_TREE.with(|t| {
@@ -303,6 +294,8 @@ fn update_merkle_tree(digest: String) -> bool {
         // insert blob's hash node
         tree.insert(hash);
     });
+
+    let mut index = 0;
 
     // update index map
     // insert index到index map，这个index用来merkle tree做proof的时候用
@@ -320,6 +313,16 @@ fn update_merkle_tree(digest: String) -> bool {
 
     // 当index & batch size == 0的时候，就commit一次merkle root，然后返回true
     index % SIGNATURE_BATCH_SIZE.with(|s| *s.borrow()) == 0
+}
+
+fn check_caller(c: Principal) -> bool {
+    OWNER.with(|o| o.borrow().eq(&c))
+}
+
+candid::export_service!();
+#[test]
+fn export_candid() {
+    println!("{:#?}", __export_service())
 }
 
 #[cfg(test)]
