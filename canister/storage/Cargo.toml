@@ -12,14 +12,8 @@ crate-type = ["cdylib"]
 ic-cdk = "0.14.0"
 ic-cdk-macros = "0.13.2"
 ic-stable-structures = "0.6"
-hex = "0.4.3"
-k256 = { version = "0.12.0", features = ["ecdsa"] }
-getrandom = { version = "0.2", features = ["custom"] }
-rs_merkle = "1.4.2"
+hex = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 candid = { workspace = true }
 sha2 = { workspace = true }
-
-[dev-dependencies]
-tokio = { version = "1", features = ["full"] }

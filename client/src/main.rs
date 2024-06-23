@@ -1,66 +1,86 @@
 extern crate core;
 
-use std::io;
+use std::fs;
+use std::fs::OpenOptions;
+use std::io::Write;
+use std::time::Duration;
 
 use anyhow::Result;
-use candid::{CandidType, Decode, Deserialize, Encode, Principal};
-use ic_agent::identity::BasicIdentity;
-use ic_agent::Agent;
+use candid::{CandidType, Deserialize};
+use clap::Parser;
 use rand::Rng;
+use serde_json::json;
 use sha2::Digest;
 
-use client::upload::ICStorage;
+use client::upload::{BlobKey, ICStorage};
 
 const E8S: u64 = 100_000_000;
 
+#[derive(Debug, Parser)]
+struct Cli {
+    #[arg(short, long)]
+    pub command: String,
+
+    #[arg(short, long)]
+    pub num: usize,
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
-    let mut path = String::new();
+    let cli = Cli::parse();
 
-    println!("entre identity.pem path:");
-    io::stdin()
-        .read_line(&mut path)
-        .expect("Failed to read line");
+    println!("Begin Test");
+    let mut da = ICStorage::new("../identity.pem".to_string()).unwrap();
 
-    // 去除输入字符串末尾的换行符
-    let path = path.trim();
+    if cli.command.eq("save") {
+        let mut file = OpenOptions::new()
+            .write(true)
+            .read(true)
+            .create(true)
+            .open("blob_key.json")?;
 
-    println!("开始测试");
-    let mut da = ICStorage::new(path.to_string()).unwrap();
+        let mut rng = rand::thread_rng();
+        //准备4个blob
+        let mut batch_1 = vec![vec![0u8; 3 * 1024 * 1024]; cli.num]; // 10个3M
+        for i in &mut batch_1 {
+            rng.fill(&mut i[..]);
+        }
 
-    // let mut rng = rand::thread_rng();
-    // //准备4个blob
-    // let mut batch_1 = vec![vec![0u8; 3 * 1024 * 1024]; 10]; // 10个3M
-    // for i in &mut batch_1 {
-    //     rng.fill(&mut i[..]);
-    // }
-    //
-    // println!("{}", "-".repeat(20));
-    // let mut response = Vec::new();
-    //
-    // for (index, item) in batch_1.iter().enumerate() {
-    //     println!("第 {} 个Batch", index);
-    //     let res = da.save_blob(item.to_vec()).await?;
-    //     let raw = String::from_utf8(res).unwrap();
-    //     let key = serde_json::from_str::<BlobKey>(&raw).unwrap();
-    //     response.push(key)
-    // }
-    //
-    // println!("{}begin sleep {}", "-".repeat(10), "-".repeat(10));
-    // tokio::time::sleep(Duration::from_secs(600)).await;
+        println!("{}", "-".repeat(20));
+        let mut response = Vec::new();
 
-    // 获取Blob
-    // println!("{}", "-".repeat(20));
-    // println!("获取Blob");
-    // let mut batch_2 = Vec::new();
-    // for (index, blob_key) in response.iter().enumerate() {
-    //     println!("第 {} 个Batch", index);
-    //     let res = da.get_blob(blob_key.clone()).await?;
-    //     batch_2.push(res);
-    // }
+        for (index, item) in batch_1.iter().enumerate() {
+            println!("Batch Index: {}", index);
+            let res = da.save_blob(item.to_vec()).await?;
+            let raw = String::from_utf8(res).unwrap();
+            let key = serde_json::from_str::<BlobKey>(&raw).unwrap();
+            response.push(key)
+        }
 
-    // -------------
+        let json_value = json!(response);
+        file.write_all(json_value.to_string().as_bytes())?;
 
+        tokio::time::sleep(Duration::from_secs(180)).await;
+    } else {
+        // 获取Blob
+        // 反序列化 JSON 数据到 Vec
+        let file_contents = fs::read_to_string("blob_key.json")?;
+        let response: Vec<BlobKey> = serde_json::from_str(&file_contents)?;
+
+        println!("{}", "-".repeat(20));
+        println!("Get Blobs:");
+        let mut batch_2 = Vec::new();
+        for (index, blob_key) in response.iter().enumerate() {
+            println!("第 {} 个Batch", index);
+            let res = da.get_blob(blob_key.clone()).await?;
+            batch_2.push(res);
+        }
+    }
+
+    Ok(())
+}
+
+fn last() {
     // println!("{}", "-".repeat(20));
     // println!("验证Blob");
     // for (i, (a, b)) in batch_1.iter().zip(batch_2.iter()).enumerate() {
@@ -132,8 +152,6 @@ async fn main() -> Result<()> {
     //     .get_blob(serde_json::to_string(&response[0])?.as_bytes().to_vec())
     //     .await?;
     // assert_eq!(res.len(), 0);
-
-    Ok(())
 }
 
 #[cfg(test)]

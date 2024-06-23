@@ -3,10 +3,8 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use anyhow::bail;
-use candid::utils::ArgumentEncoder;
 use candid::{CandidType, Decode, Deserialize, Encode, Principal};
 use futures::future::join_all;
-use ic_agent::agent::Transport;
 use ic_agent::identity::BasicIdentity;
 use ic_agent::Agent;
 use rand::random;
@@ -15,7 +13,7 @@ use sha2::Digest;
 
 // 20 subnets with 40 canisters
 const CANISTER_COLLECTIONS: [[&str; 2]; 20] =
-    [["hxctj-oiaaa-aaaap-qhltq-cai", "v3y75-6iaaa-aaaak-qikaa-cai"]; 20]; // 测试用 canisters
+    [["hxctj-oiaaa-aaaap-qhltq-cai", "v3y75-6iaaa-aaaak-qikaa-cai"]; 20];
 
 const CHUNK_SIZE: usize = 1 << 20; // 1 MB
 
@@ -38,7 +36,7 @@ struct BlobChunk {
 }
 
 impl BlobChunk {
-    pub fn generate_chunks(blob: &[u8], digest: String, timestamp: u128) -> Vec<BlobChunk> {
+    pub fn generate_chunks(blob: &[u8], digest: &String, timestamp: u128) -> Vec<BlobChunk> {
         // split to chunks
         let data_slice = Self::split_blob_into_chunks(blob);
         let mut chunks = Vec::with_capacity(data_slice.len());
@@ -94,7 +92,7 @@ impl Debug for RoutingInfo {
 // canister存的时候主要用digest,time用server的time
 #[derive(Serialize, Deserialize, Clone)]
 pub struct BlobKey {
-    pub digest: [u8; 32],
+    pub digest: String,
     pub expiry_timestamp: u128,
     pub routing_info: RoutingInfo,
 }
@@ -112,7 +110,7 @@ impl Debug for BlobKey {
 impl BlobKey {
     pub fn new(blob: &Vec<u8>) -> Self {
         Self {
-            digest: sha2::Sha256::digest(blob).into(),
+            digest: hex::encode(sha2::Sha256::digest(blob)),
             expiry_timestamp: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .expect("Failed to get timestamp")
@@ -155,13 +153,14 @@ impl ICStorage {
     pub async fn save_blob(&mut self, blob: Vec<u8>) -> anyhow::Result<Vec<u8>> {
         let routing_canisters = self.get_cid()?;
         let digest: [u8; 32] = sha2::Sha256::digest(&blob).into();
-        let hex_digest = hex::encode(digest);
+        let hex_digest = hex::encode(&digest);
+
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("Failed to get timestamp")
             .as_nanos();
 
-        let chunks = Arc::new(BlobChunk::generate_chunks(&blob, hex_digest, timestamp));
+        let chunks = Arc::new(BlobChunk::generate_chunks(&blob, &hex_digest, timestamp));
         let agent = Arc::new(self.agent.clone());
 
         for cid in routing_canisters.iter() {
@@ -171,7 +170,7 @@ impl ICStorage {
         }
 
         let blob_key = BlobKey {
-            digest,
+            digest: hex_digest,
             expiry_timestamp: timestamp + LIVE_TIME,
             routing_info: RoutingInfo {
                 total_size: blob.len(),
@@ -237,12 +236,12 @@ impl ICStorage {
         let res = Self::get_blob_from_canisters(agent, &key).await?;
 
         for blob in res {
-            let digest: [u8; 32] = sha2::Sha256::digest(&blob).into();
-            if key.digest == digest {
-                println!("ICStorage::get_blob(): get blob success blob digest match:\nkey digest:{:?}\nget blob digest{:?}", hex::encode(key.digest), hex::encode(digest));
+            let digest = hex::encode(sha2::Sha256::digest(&blob));
+            if digest.eq(&key.digest) {
+                println!("ICStorage::get_blob(): get blob success blob digest match:\nkey digest:{:?}\nget blob digest{:?}", key.digest, digest);
                 return Ok(blob);
             } else {
-                println!("ICStorage::get_blob(): blob digest not match\nkey digest:{:?}\nget blob digest{:?}", hex::encode(key.digest), hex::encode(digest));
+                println!("ICStorage::get_blob(): blob digest not match\nkey digest:{:?}\nget blob digest{:?}", key.digest, digest);
             }
         }
 
@@ -255,7 +254,7 @@ impl ICStorage {
         agent: Arc<Agent>,
         key: &BlobKey,
     ) -> anyhow::Result<Vec<Vec<u8>>> {
-        let hash = Arc::new(hex::encode(key.digest));
+        let hash = Arc::new(&key.digest);
 
         let mut fut_tasks = Vec::with_capacity(key.routing_info.host_canisters.len());
         for cid in key.routing_info.host_canisters {
