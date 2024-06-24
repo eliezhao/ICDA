@@ -11,7 +11,7 @@ use crate::time_heap::CANISTER_THRESHOLD;
 #[derive(CandidType, Serialize, Deserialize, Debug, Clone)]
 pub struct BlobId {
     /// Sha256 digest of the blob in hex format.
-    pub digest: String, // hex encoded digest
+    pub digest: [u8; 32], // hex encoded digest
 
     /// Time since epoch in nanos.
     pub timestamp: u128,

@@ -3,6 +3,9 @@ name = "signature"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+crate-type = ["cdylib"]
+
 [dependencies]
 ic-stable-structures = "0.6"
 ic-cdk = "0.14.0"
@@ -14,4 +17,3 @@ rs_merkle = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 candid = { workspace = true }
-sha2 = { workspace = true }

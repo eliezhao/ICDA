@@ -14,7 +14,7 @@ use crate::Memory;
 #[derive(Deserialize, Serialize, CandidType, Debug, Clone)]
 pub struct BlobChunk {
     /// Sha256 digest of the blob in hex format.
-    pub digest: String, // hex encoded digest
+    pub digest: [u8; 32], // hex encoded digest
 
     /// Time since epoch in nanos.
     pub timestamp: u128,
@@ -30,13 +30,14 @@ pub struct BlobChunk {
 // 2. 之后的上传，将chunk append到vec中
 pub fn handle_upload(mut map: RefMut<BTreeMap<String, Vec<u8>, Memory>>, chunk: &BlobChunk) {
     // 获取map中有无key - value
-    if map.get(&chunk.digest).is_none() {
+    let hex_digest = hex::encode(&chunk.digest);
+    if map.get(&hex_digest).is_none() {
         // 没有，就insert，同时将vec的大小控制为总大小
         let value: Vec<u8> = Vec::with_capacity(chunk.total);
-        map.insert(chunk.digest.clone(), value);
+        map.insert(hex_digest.clone(), value);
     }
 
-    let mut value = map.get(&chunk.digest).unwrap();
+    let mut value = map.get(&hex_digest).unwrap();
     value.extend_from_slice(&chunk.chunk);
-    let _ = map.insert(chunk.digest.clone(), value);
+    let _ = map.insert(hex_digest, value);
 }

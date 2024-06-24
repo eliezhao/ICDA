@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["canister/signature", "canister/storage", "client", "server"]
+members = ["canister/signature", "canister/storage", "client"]
 
 [workspace.package]
 name = "icda"

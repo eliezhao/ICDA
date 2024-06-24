@@ -13,7 +13,7 @@ pub const CANISTER_THRESHOLD: u32 = 30240;
 // 2. 如果到canister阈值，则每进来一个blob，就pop出过期的item
 pub fn handle_time_heap(
     mut heap: RefMut<StableMinHeap<BlobId, Memory>>,
-    digest: String,
+    digest: [u8; 32],
     timestamp: u128,
 ) -> Option<BlobId> {
     let blob_id = BlobId { digest, timestamp };

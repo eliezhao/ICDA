@@ -8,13 +8,14 @@ use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemor
 use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap, StableMinHeap};
 use serde::{Deserialize, Serialize};
 
+use crate::blob_chunk::BlobChunk;
 use crate::blob_id::BlobId;
 use crate::time_heap::handle_time_heap;
-use crate::upload::BlobChunk;
 
 mod blob_id;
 mod time_heap;
-mod upload;
+
+mod blob_chunk;
 
 type Memory = VirtualMemory<DefaultMemoryImpl>;
 
@@ -25,10 +26,7 @@ struct Blob {
 }
 
 thread_local! {
-    // todo : create signature canister
-    static SIGNATURE_CANISTER: RefCell<Principal> = RefCell::new(Principal::from_text("").unwrap()); // 2 round => 40s,1 round about 20s[20 subnet]
-
-    static QUERY_RESPONSE_SIZE: RefCell<usize> = const { RefCell::new(2621440) }; // 2.5 M
+    static SIGNATURE_CANISTER: RefCell<Principal> = RefCell::new(Principal::from_text("v3y75-6iaaa-aaaak-qikaa-cai").unwrap()); // 2 round => 40s,1 round about 20s[20 subnet]
 
     // The memory manager is used for simulating multiple memories. Given a `MemoryId` it can
     // return a memory that can be used by stable structures.
@@ -53,22 +51,21 @@ thread_local! {
     );
 }
 
+const QUERY_RESPONSE_SIZE: usize = 2621440;
+
 // Retrieves the value associated with the given key if it exists.
 // Return vec![] if key doesn't exit
 #[query(name = "get_blob")]
 #[candid_method(query)]
 fn get_blob(key: String) -> Blob {
-    // get query size
-    let query_size = QUERY_RESPONSE_SIZE.with(|q| *q.borrow());
-
     // vec![], None
     let mut blob = Blob::default();
 
     MAP.with_borrow(|m| {
         if let Some(data) = m.get(&key) {
-            if data.len() > query_size {
+            if data.len() > QUERY_RESPONSE_SIZE {
                 // 大于Query则分片，串行get
-                blob.data.extend_from_slice(&data[..query_size]);
+                blob.data.extend_from_slice(&data[..QUERY_RESPONSE_SIZE]);
                 blob.next = Some(1)
             } else {
                 blob.data = data;
@@ -82,17 +79,18 @@ fn get_blob(key: String) -> Blob {
 #[query(name = "get_blob_with_index")]
 #[candid_method(query)]
 fn get_blob_with_index(key: String, index: usize) -> Blob {
-    let query_size = QUERY_RESPONSE_SIZE.with(|q| *q.borrow());
     let mut blob = Blob::default();
 
     MAP.with_borrow(|m| {
         if let Some(data) = m.get(&key) {
-            if data.len() > query_size * (index + 1) {
-                blob.data
-                    .extend_from_slice(&data[query_size * index..query_size * (index + 1)]);
+            if data.len() > QUERY_RESPONSE_SIZE * (index + 1) {
+                blob.data.extend_from_slice(
+                    &data[QUERY_RESPONSE_SIZE * index..QUERY_RESPONSE_SIZE * (index + 1)],
+                );
                 blob.next = Some(index + 1);
             } else {
-                blob.data.extend_from_slice(&data[query_size * index..]);
+                blob.data
+                    .extend_from_slice(&data[QUERY_RESPONSE_SIZE * index..]);
             }
         }
     });
@@ -117,22 +115,32 @@ async fn save_blob(chunk: BlobChunk) -> Result<(), String> {
     MAP.with(|m| {
         // remove expired blob
         if let Some(expired_blob) = expired_key {
-            m.borrow_mut().remove(&expired_blob.digest);
+            let hex_digest = hex::encode(&expired_blob.digest);
+            m.borrow_mut().remove(&hex_digest);
         }
 
-        upload::handle_upload(m.borrow_mut(), &chunk)
+        blob_chunk::handle_upload(m.borrow_mut(), &chunk)
     });
 
-    // todo: 参数统一String，内部做hex en/de code 处理
-    // todo: api : push_key (digest: String) -> Result()
     let _: Result<(), _> = ic_cdk::call(
         SIGNATURE_CANISTER.with(|s| s.borrow().clone()),
-        "push_key",
+        "generate_confirmation",
         (chunk.digest.clone(),),
     )
     .await;
 
     Ok(())
+}
+
+#[update(name = "notify_generate_confirmation")]
+#[candid_method]
+async fn notify_generate_confirmation(digest: String) {
+    let _: Result<(), _> = ic_cdk::call(
+        SIGNATURE_CANISTER.with(|s| s.borrow().clone()),
+        "push_digest",
+        (digest,),
+    )
+    .await;
 }
 
 #[update(name = "change_owner")]
