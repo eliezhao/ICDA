@@ -8,25 +8,20 @@ use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemor
 use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap, StableMinHeap};
 use serde::{Deserialize, Serialize};
 
-use crate::blob_chunk::BlobChunk;
-use crate::blob_id::BlobId;
+use crate::blob::{Blob, BlobChunk, BlobId};
 use crate::time_heap::handle_time_heap;
 
-mod blob_id;
 mod time_heap;
 
-mod blob_chunk;
+mod blob;
+mod da;
 
 type Memory = VirtualMemory<DefaultMemoryImpl>;
 
-#[derive(CandidType, Deserialize, Serialize, Clone, Default)]
-struct Blob {
-    data: Vec<u8>,
-    next: Option<usize>, // next start index
-}
-
 thread_local! {
     static SIGNATURE_CANISTER: RefCell<Principal> = RefCell::new(Principal::from_text("v3y75-6iaaa-aaaak-qikaa-cai").unwrap()); // 2 round => 40s,1 round about 20s[20 subnet]
+
+    static DACONFIG: RefCell<Principal> = RefCell::new(Principal::from_text("v3y75-6iaaa-aaaak-qikaa-cai").unwrap()); // 2 round => 40s,1 round about 20s[20 subnet]
 
     // The memory manager is used for simulating multiple memories. Given a `MemoryId` it can
     // return a memory that can be used by stable structures.
@@ -57,7 +52,8 @@ const QUERY_RESPONSE_SIZE: usize = 2621440;
 // Return vec![] if key doesn't exit
 #[query(name = "get_blob")]
 #[candid_method(query)]
-fn get_blob(key: String) -> Blob {
+fn get_blob(digest: [u8; 32]) -> Blob {
+    let key = hex::encode(digest);
     // vec![], None
     let mut blob = Blob::default();
 
@@ -78,7 +74,9 @@ fn get_blob(key: String) -> Blob {
 
 #[query(name = "get_blob_with_index")]
 #[candid_method(query)]
-fn get_blob_with_index(key: String, index: usize) -> Blob {
+fn get_blob_with_index(digest: [u8; 32], index: usize) -> Blob {
+    let key = hex::encode(digest);
+
     let mut blob = Blob::default();
 
     MAP.with_borrow(|m| {
@@ -119,12 +117,12 @@ async fn save_blob(chunk: BlobChunk) -> Result<(), String> {
             m.borrow_mut().remove(&hex_digest);
         }
 
-        blob_chunk::handle_upload(m.borrow_mut(), &chunk)
+        blob::handle_upload(m.borrow_mut(), &chunk)
     });
 
     let _: Result<(), _> = ic_cdk::call(
         SIGNATURE_CANISTER.with(|s| s.borrow().clone()),
-        "generate_confirmation",
+        "insert_digest",
         (chunk.digest.clone(),),
     )
     .await;
@@ -134,10 +132,10 @@ async fn save_blob(chunk: BlobChunk) -> Result<(), String> {
 
 #[update(name = "notify_generate_confirmation")]
 #[candid_method]
-async fn notify_generate_confirmation(digest: String) {
+async fn notify_generate_confirmation(digest: [u8; 32]) {
     let _: Result<(), _> = ic_cdk::call(
         SIGNATURE_CANISTER.with(|s| s.borrow().clone()),
-        "push_digest",
+        "insert_digest",
         (digest,),
     )
     .await;
