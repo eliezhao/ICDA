@@ -5,10 +5,14 @@ type Config = record {
   confirmation_batch_size : nat32;
 };
 type Confirmation = record { signature : text; root : blob; proof : vec blob };
-type PublicKeyReply = record { public_key_hex : text };
-type Result = variant { Ok : PublicKeyReply; Err : text };
+type ConfirmationStatus = variant {
+  Invalid;
+  Confirmed : Confirmation;
+  Pending;
+};
+type Result = variant { Ok : blob; Err : text };
 service : {
-  get_confirmation : (blob) -> (opt Confirmation);
+  get_confirmation : (blob) -> (ConfirmationStatus);
   insert_digest : (blob) -> ();
   insert_digest_and_generate_confirmation : (blob) -> ();
   public_key : () -> (Result);

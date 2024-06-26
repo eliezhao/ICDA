@@ -17,6 +17,13 @@ use serde::Serialize;
 use crate::CONFIRMATION_CONFIG;
 
 #[derive(CandidType, Deserialize, Serialize, Clone)]
+pub enum ConfirmationStatus {
+    Pending,
+    Confirmed(Confirmation),
+    Invalid,
+}
+
+#[derive(CandidType, Deserialize, Serialize, Clone)]
 pub struct Confirmation {
     pub root: [u8; 32],       // merkle root hash
     pub proof: Vec<[u8; 32]>, // merkle proof
@@ -25,7 +32,7 @@ pub struct Confirmation {
 
 #[derive(CandidType, Deserialize, Serialize, Clone)]
 pub struct BatchConfirmation {
-    pub signature: String,
+    pub signature: Option<String>,
     pub root: [u8; 32],
     pub nodes: Vec<[u8; 32]>, // 12 个 blob的digest
 }
@@ -48,7 +55,7 @@ impl Storable for BatchConfirmation {
 impl Default for BatchConfirmation {
     fn default() -> Self {
         Self {
-            signature: "".to_string(),
+            signature: None,
             root: [0x00u8; 32],
             nodes: Vec::with_capacity(
                 CONFIRMATION_CONFIG.with_borrow(|s| s.confirmation_batch_size) as usize,

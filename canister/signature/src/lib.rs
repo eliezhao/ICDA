@@ -28,10 +28,10 @@ use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap};
 use rs_merkle::algorithms::Sha256;
 use rs_merkle::MerkleTree;
 
-use crate::confirmation::{BatchConfirmation, BatchInfo, Config, Confirmation};
+use crate::confirmation::{BatchConfirmation, BatchInfo, Config, Confirmation, ConfirmationStatus};
 use crate::signature::{
-    mgmt_canister_id, ECDSAPublicKey, ECDSAPublicKeyReply, EcdsaKeyIds, PublicKeyReply,
-    SignWithECDSA, SignWithECDSAReply, SignatureReply,
+    mgmt_canister_id, ECDSAPublicKey, ECDSAPublicKeyReply, EcdsaKeyIds, SignWithECDSA,
+    SignWithECDSAReply, SignatureReply,
 };
 
 mod confirmation;
@@ -66,25 +66,34 @@ thread_local! {
 // - 通过tree和index生成proof，然后生成confirmation
 #[query(name = "get_confirmation")]
 #[candid_method]
-fn get_confirmation(digest: [u8; 32]) -> Option<Confirmation> {
+fn get_confirmation(digest: [u8; 32]) -> ConfirmationStatus {
     let hex_digest = hex::encode(digest);
-    let BatchInfo {
-        batch_index,
-        leaf_index,
-    } = INDEX_MAP.with_borrow(|m| m.get(&hex_digest))?;
-    let batch_confirmation = BATCH_CONFIRMATION.with_borrow(|m| m.get(&batch_index))?;
+    match INDEX_MAP.with_borrow(|m| m.get(&hex_digest)) {
+        None => return ConfirmationStatus::Invalid,
+        Some(BatchInfo {
+            batch_index,
+            leaf_index,
+        }) => {
+            let batch_confirmation = BATCH_CONFIRMATION
+                .with_borrow(|m| m.get(&batch_index))
+                .unwrap();
+            if batch_confirmation.signature.is_none() {
+                return ConfirmationStatus::Pending;
+            }
 
-    let merkle_tree = MerkleTree::<Sha256>::from_leaves(&batch_confirmation.nodes);
-    let root = merkle_tree.root()?;
-    let proof = merkle_tree.proof(&[leaf_index]).proof_hashes().to_vec();
+            let merkle_tree = MerkleTree::<Sha256>::from_leaves(&batch_confirmation.nodes);
+            let root = merkle_tree.root().unwrap();
+            let proof = merkle_tree.proof(&[leaf_index]).proof_hashes().to_vec();
 
-    let confirmation = Confirmation {
-        root,
-        proof,
-        signature: batch_confirmation.signature.clone(),
-    };
+            let confirmation = Confirmation {
+                root,
+                proof,
+                signature: batch_confirmation.signature.unwrap(),
+            };
 
-    Some(confirmation)
+            ConfirmationStatus::Confirmed(confirmation)
+        }
+    }
 }
 
 // 更新本地的digest
@@ -137,7 +146,7 @@ async fn insert_digest_and_generate_confirmation(digest: [u8; 32]) {
 
 #[update(name = "public_key")]
 #[candid_method]
-pub async fn public_key() -> Result<PublicKeyReply, String> {
+pub async fn public_key() -> Result<Vec<u8>, String> {
     let request = ECDSAPublicKey {
         canister_id: None,
         derivation_path: vec![],
@@ -149,13 +158,11 @@ pub async fn public_key() -> Result<PublicKeyReply, String> {
             .await
             .map_err(|e| format!("ecdsa_public_key failed {}", e.1))?;
 
-    Ok(PublicKeyReply {
-        public_key_hex: hex::encode(res.public_key),
-    })
+    Ok(res.public_key)
 }
 
 #[update(name = "update_config")]
-fn update_confirmation_config(config: Config) {
+fn update_config(config: Config) {
     assert!(
         check_owner(caller()),
         "only owner can update signature batch size"
@@ -180,7 +187,7 @@ async fn update_signature(batch_index: u32) {
     // sign merkle root
     match sign(root.to_vec()).await {
         Ok(SignatureReply { signature_hex }) => {
-            confirmation.signature = signature_hex;
+            confirmation.signature = Some(signature_hex);
             // 更新batch confirmation & insert
             BATCH_CONFIRMATION.with_borrow_mut(|c| c.insert(batch_index, confirmation));
         }
@@ -214,7 +221,6 @@ candid::export_service!();
 #[test]
 fn export_candid() {
     println!("{:#?}", __export_service());
-    assert_eq!(true, false)
 }
 
 fn prune_expired_confirmation(current_batch_index: u32) {
