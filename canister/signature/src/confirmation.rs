@@ -24,10 +24,17 @@ pub enum ConfirmationStatus {
 }
 
 #[derive(CandidType, Deserialize, Serialize, Clone)]
+pub struct Proof {
+    pub proof_hashes: Vec<[u8; 32]>,
+    pub leaf_index: usize,
+    pub leaf_digest: [u8; 32],
+}
+
+#[derive(CandidType, Deserialize, Serialize, Clone)]
 pub struct Confirmation {
-    pub root: [u8; 32],       // merkle root hash
-    pub proof: Vec<[u8; 32]>, // merkle proof
-    pub signature: String,    // hex encoded signature
+    pub root: [u8; 32],    // merkle root hash
+    pub proof: Proof,      // merkle proof
+    pub signature: String, // hex encoded signature
 }
 
 #[derive(CandidType, Deserialize, Serialize, Clone)]

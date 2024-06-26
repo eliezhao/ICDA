@@ -28,7 +28,9 @@ use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap};
 use rs_merkle::algorithms::Sha256;
 use rs_merkle::MerkleTree;
 
-use crate::confirmation::{BatchConfirmation, BatchInfo, Config, Confirmation, ConfirmationStatus};
+use crate::confirmation::{
+    BatchConfirmation, BatchInfo, Config, Confirmation, ConfirmationStatus, Proof,
+};
 use crate::signature::{
     mgmt_canister_id, ECDSAPublicKey, ECDSAPublicKeyReply, EcdsaKeyIds, SignWithECDSA,
     SignWithECDSAReply, SignatureReply,
@@ -83,7 +85,13 @@ fn get_confirmation(digest: [u8; 32]) -> ConfirmationStatus {
 
             let merkle_tree = MerkleTree::<Sha256>::from_leaves(&batch_confirmation.nodes);
             let root = merkle_tree.root().unwrap();
-            let proof = merkle_tree.proof(&[leaf_index]).proof_hashes().to_vec();
+            let proof_hashes = merkle_tree.proof(&[leaf_index]).proof_hashes().to_vec();
+
+            let proof = Proof {
+                proof_hashes,
+                leaf_index,
+                leaf_digest: digest,
+            };
 
             let confirmation = Confirmation {
                 root,
@@ -221,6 +229,7 @@ candid::export_service!();
 #[test]
 fn export_candid() {
     println!("{:#?}", __export_service());
+    assert_eq!(true, false)
 }
 
 fn prune_expired_confirmation(current_batch_index: u32) {
