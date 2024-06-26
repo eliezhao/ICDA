@@ -1,0 +1,16 @@
+type Config = record {
+  confirmation_live_time : nat32;
+  owner : principal;
+  da_canisters : vec principal;
+  confirmation_batch_size : nat32;
+};
+type Confirmation = record { signature : text; root : blob; proof : vec blob };
+type PublicKeyReply = record { public_key_hex : text };
+type Result = variant { Ok : PublicKeyReply; Err : text };
+service : {
+  get_confirmation : (blob) -> (opt Confirmation);
+  insert_digest : (blob) -> ();
+  insert_digest_and_generate_confirmation : (blob) -> ();
+  public_key : () -> (Result);
+  update_config : (Config) -> ();
+}

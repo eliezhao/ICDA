@@ -1,0 +1,21 @@
+type Blob = record { data : blob; next : opt nat64 };
+type BlobChunk = record {
+  total : nat64;
+  \"blob\" : blob;
+  timestamp : nat;
+  digest : blob;
+};
+type Config = record {
+  owner : principal;
+  signature_canister : principal;
+  query_response_size : nat64;
+};
+type Result = variant { Ok; Err : text };
+service : {
+  get_blob : (blob) -> (Blob) query;
+  get_blob_with_index : (blob, nat64) -> (Blob) query;
+  notify_generate_confirmation : (blob) -> ();
+  save_blob : (BlobChunk) -> (Result);
+  update_config : (Config) -> ();
+  update_da_config : (Config) -> ();
+}

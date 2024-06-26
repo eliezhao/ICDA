@@ -19,19 +19,16 @@
 //! - 每次生成1个confirmation，就说明可能有一个confirmation过期了,如果过期了就删除过期的confirmation
 
 use std::cell::RefCell;
-use std::collections::HashSet;
-use std::str::FromStr;
 
-use candid::{candid_method, CandidType, Deserialize, Principal};
+use candid::{candid_method, Principal};
 use ic_cdk::{caller, print, spawn};
 use ic_cdk_macros::{query, update};
 use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
-use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap, StableMinHeap};
+use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap};
 use rs_merkle::algorithms::Sha256;
 use rs_merkle::MerkleTree;
-use serde::Serialize;
 
-use crate::confirmation::{BatchConfirmation, BatchInfo, Confirmation, ConfirmationConfig};
+use crate::confirmation::{BatchConfirmation, BatchInfo, Config, Confirmation};
 use crate::signature::{
     mgmt_canister_id, ECDSAPublicKey, ECDSAPublicKeyReply, EcdsaKeyIds, PublicKeyReply,
     SignWithECDSA, SignWithECDSAReply, SignatureReply,
@@ -44,7 +41,7 @@ type Memory = VirtualMemory<DefaultMemoryImpl>;
 
 thread_local! {
     // confirmation config
-    static CONFIRMATION_CONFIG: RefCell<ConfirmationConfig> = RefCell::new(ConfirmationConfig::default());
+    static CONFIRMATION_CONFIG: RefCell<Config> = RefCell::new(Config::default());
 
     // The memory manager is used for simulating multiple memories. Given a `MemoryId`
     // return a memory that can be used by stable structures.
@@ -97,7 +94,8 @@ fn get_confirmation(digest: [u8; 32]) -> Option<Confirmation> {
 #[update(name = "insert_digest")]
 #[candid_method]
 async fn insert_digest_and_generate_confirmation(digest: [u8; 32]) {
-    let hexed_digest = hex::encode(&digest);
+    assert!(check_updater(caller()), "only updater can insert digest");
+    let hexed_digest = hex::encode(digest);
 
     INDEX_MAP.with_borrow_mut(|m| {
         // get current index
@@ -156,12 +154,10 @@ pub async fn public_key() -> Result<PublicKeyReply, String> {
     })
 }
 
-#[update(name = "update_confirmation_config")]
-fn update_confirmation_config(config: ConfirmationConfig) {
-    assert_eq!(
-        caller(),
-        Principal::from_text("ytoqu-ey42w-sb2ul-m7xgn-oc7xo-i4btp-kuxjc-b6pt4-dwdzu-kfqs4-nae")
-            .unwrap(),
+#[update(name = "update_config")]
+fn update_confirmation_config(config: Config) {
+    assert!(
+        check_owner(caller()),
         "only owner can update signature batch size"
     );
     CONFIRMATION_CONFIG.with_borrow_mut(|c| *c = config);
@@ -217,7 +213,8 @@ async fn sign(hash: Vec<u8>) -> Result<SignatureReply, String> {
 candid::export_service!();
 #[test]
 fn export_candid() {
-    println!("{:#?}", __export_service())
+    println!("{:#?}", __export_service());
+    assert_eq!(true, false)
 }
 
 fn prune_expired_confirmation(current_batch_index: u32) {
@@ -233,7 +230,7 @@ fn prune_expired_confirmation(current_batch_index: u32) {
             .unwrap()
             .nodes
             .iter()
-            .map(|digest| hex::encode(digest))
+            .map(hex::encode)
             .collect::<Vec<_>>();
 
         // remove batch confirmation
@@ -249,6 +246,10 @@ fn prune_expired_confirmation(current_batch_index: u32) {
 }
 
 // 只有自己的canister才能写进来key
-fn check_caller(c: Principal) -> bool {
-    true
+fn check_owner(c: Principal) -> bool {
+    c.eq(&CONFIRMATION_CONFIG.with_borrow(|c| c.owner))
+}
+
+fn check_updater(c: Principal) -> bool {
+    CONFIRMATION_CONFIG.with_borrow(|con| con.da_canisters.contains(&c))
 }

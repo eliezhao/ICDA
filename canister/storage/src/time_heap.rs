@@ -4,7 +4,7 @@ use std::cell::RefMut;
 
 use ic_stable_structures::StableMinHeap;
 
-use crate::blob_id::BlobId;
+use crate::blob::BlobId;
 use crate::Memory;
 
 pub const CANISTER_THRESHOLD: u32 = 30240;

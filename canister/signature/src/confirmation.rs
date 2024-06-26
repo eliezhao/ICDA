@@ -7,9 +7,9 @@
 */
 
 use std::borrow::Cow;
-use std::str::FromStr;
+use std::collections::HashSet;
 
-use candid::{CandidType, Decode, Deserialize, Encode};
+use candid::{CandidType, Decode, Deserialize, Encode, Principal};
 use ic_stable_structures::storable::Bound;
 use ic_stable_structures::Storable;
 use serde::Serialize;
@@ -57,21 +57,6 @@ impl Default for BatchConfirmation {
     }
 }
 
-#[derive(CandidType, Serialize, Deserialize, Debug)]
-pub struct ConfirmationConfig {
-    pub confirmation_batch_size: u32,
-    pub confirmation_live_time: u32,
-}
-
-impl Default for ConfirmationConfig {
-    fn default() -> Self {
-        Self {
-            confirmation_live_time: 60 * 60 * 24 * 7 + 1, // 7 days
-            confirmation_batch_size: 12,                  // 12 blobs per confirmation
-        }
-    }
-}
-
 #[derive(CandidType, Deserialize, Serialize, Clone, Default)]
 pub(crate) struct BatchInfo {
     pub batch_index: u32,
@@ -91,4 +76,26 @@ impl Storable for BatchInfo {
         max_size: 8,
         is_fixed_size: true,
     };
+}
+
+#[derive(CandidType, Serialize, Deserialize, Debug)]
+pub struct Config {
+    pub confirmation_batch_size: u32,
+    pub confirmation_live_time: u32,
+    pub da_canisters: HashSet<Principal>,
+    pub owner: Principal, // who can change confirmation config
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            confirmation_live_time: 60 * 60 * 24 * 7 + 1, // 7 days
+            confirmation_batch_size: 12,                  // 12 blobs per confirmation
+            da_canisters: HashSet::with_capacity(20),
+            owner: Principal::from_text(
+                "ytoqu-ey42w-sb2ul-m7xgn-oc7xo-i4btp-kuxjc-b6pt4-dwdzu-kfqs4-nae",
+            )
+            .unwrap(),
+        }
+    }
 }
