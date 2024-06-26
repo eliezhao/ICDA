@@ -1,17 +1,17 @@
 {
   "canisters": {
-    "canister_1": {
-      "candid": "canister.did",
+    "storage_1": {
+      "candid": "storage/storage.did",
       "package": "storage",
       "type": "rust"
     },
-    "canister_2": {
-      "candid": "canister.did",
+    "storage_2": {
+      "candid": "storage/storage.did",
       "package": "storage",
       "type": "rust"
     },
     "signature": {
-      "candid": "signature.did",
+      "candid": "signature/signature.did",
       "package": "signature",
       "type": "rust"
     }

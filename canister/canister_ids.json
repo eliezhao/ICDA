@@ -1,8 +1,8 @@
 {
-  "canister_1": {
+  "storage_1": {
     "ic": "hxctj-oiaaa-aaaap-qhltq-cai"
   },
-  "canister_2": {
+  "storage_2": {
     "ic": "v3y75-6iaaa-aaaak-qikaa-cai"
   },
   "signature": {

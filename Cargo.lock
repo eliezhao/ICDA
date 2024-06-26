@@ -524,20 +524,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "canister"
-version = "0.1.0"
-dependencies = [
- "candid",
- "hex",
- "ic-cdk 0.14.0",
- "ic-cdk-macros 0.13.2",
- "ic-stable-structures",
- "serde",
- "serde_json",
- "sha2 0.10.8",
-]
-
-[[package]]
 name = "cargo-platform"
 version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3282,14 +3268,12 @@ name = "signature"
 version = "0.1.0"
 dependencies = [
  "candid",
- "getrandom",
  "hex",
  "ic-cdk 0.14.0",
  "ic-cdk-macros 0.13.2",
  "ic-stable-structures",
  "rs_merkle",
  "serde",
- "serde_json",
 ]
 
 [[package]]
@@ -3381,6 +3365,18 @@ dependencies = [
  "libc",
  "psm",
  "winapi",
+]
+
+[[package]]
+name = "storage"
+version = "0.1.0"
+dependencies = [
+ "candid",
+ "hex",
+ "ic-cdk 0.14.0",
+ "ic-cdk-macros 0.13.2",
+ "ic-stable-structures",
+ "serde",
 ]
 
 [[package]]

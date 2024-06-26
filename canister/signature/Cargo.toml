@@ -10,10 +10,7 @@ crate-type = ["cdylib"]
 ic-stable-structures = "0.6"
 ic-cdk = "0.14.0"
 ic-cdk-macros = "0.13.2"
-# k256 = { version = "0.12.0", features = ["ecdsa"] }
-getrandom = { version = "0.2", features = ["custom"] }
 hex = { workspace = true }
 rs_merkle = { workspace = true }
 serde = { workspace = true }
-serde_json = { workspace = true }
 candid = { workspace = true }
