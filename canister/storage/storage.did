@@ -17,5 +17,4 @@ service : {
   notify_generate_confirmation : (blob) -> ();
   save_blob : (BlobChunk) -> (Result);
   update_config : (Config) -> ();
-  update_da_config : (Config) -> ();
 }

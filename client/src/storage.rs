@@ -3,6 +3,7 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use anyhow::bail;
+use anyhow::Result;
 use candid::{CandidType, Decode, Deserialize, Encode, Principal};
 use futures::future::join_all;
 use ic_agent::identity::BasicIdentity;
@@ -10,6 +11,8 @@ use ic_agent::Agent;
 use rand::random;
 use serde::Serialize;
 use sha2::Digest;
+
+use crate::signature::Config;
 
 // 20 subnets with 40 canisters
 const CANISTER_COLLECTIONS: [[&str; 2]; 20] =
@@ -328,5 +331,71 @@ impl ICStorage {
             Principal::from_text(cids[0]).unwrap(),
             Principal::from_text(cids[1]).unwrap(),
         ])
+    }
+}
+
+pub struct StorageCanister<'agent> {
+    pub agent: &'agent Agent,
+    pub canister_id: Principal,
+}
+
+impl<'agent> StorageCanister<'agent> {
+    async fn get_blob(&self, digest: [u8; 32]) -> Result<Blob> {
+        let arg = Encode!(&digest)?;
+        let raw_response = self.update_call("get_blob", arg).await?;
+        let response = Decode!(&raw_response, Blob)?;
+        Ok(response)
+    }
+
+    async fn get_blob_with_index(&self, digest: [u8; 32], index: u64) -> Result<Blob> {
+        let arg = Encode!(&digest, &index)?;
+        let raw_response = self.update_call("get_blob_with_index", arg).await?;
+        let response = Decode!(&raw_response, Blob)?;
+        Ok(response)
+    }
+
+    async fn save_blob(&self, chunk: BlobChunk) -> Result<()> {
+        let arg = Encode!(&chunk)?;
+        let raw_response = self.update_call("save_blob", arg).await?;
+        let response = Decode!(&raw_response, core::result::Result<(), String>)?;
+        if let Err(e) = response {
+            bail!("failed to save blob: {}", e)
+        }
+        Ok(())
+    }
+
+    async fn notify_generate_confirmation(&self, digest: [u8; 32]) -> Result<()> {
+        let arg = Encode!(&digest)?;
+        let _ = self
+            .update_call("notify_generate_confirmation", arg)
+            .await?;
+        Ok(())
+    }
+
+    async fn update_config(&self, config: Config) -> Result<()> {
+        let arg = Encode!(&config)?;
+        let _ = self.update_call("update_config", arg).await?;
+        Ok(())
+    }
+
+    async fn update_call(&self, function_name: &str, args: Vec<u8>) -> Result<Vec<u8>> {
+        let raw = self
+            .agent
+            .update(&self.canister_id, function_name)
+            .with_arg(args)
+            .call_and_wait()
+            .await?;
+        Ok(raw)
+    }
+
+    async fn query_call(&self, function_name: &str, args: Vec<u8>) -> Result<Vec<u8>> {
+        let res = self
+            .agent
+            .query(&self.canister_id, function_name)
+            .with_arg(args)
+            .call()
+            .await?;
+
+        Ok(res)
     }
 }

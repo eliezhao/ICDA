@@ -634,6 +634,7 @@ dependencies = [
  "icrc-ledger-types",
  "num-bigint",
  "rand",
+ "rs_merkle",
  "secp256k1",
  "serde",
  "serde_json",

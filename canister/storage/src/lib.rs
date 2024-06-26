@@ -141,7 +141,7 @@ async fn notify_generate_confirmation(digest: [u8; 32]) {
 
 #[update(name = "update_config")]
 #[candid_method]
-fn update_da_config(config: Config) {
+fn update_config(config: Config) {
     assert!(check_caller(caller()), "only owner can change da config");
 
     DACONFIG.with_borrow_mut(|c| *c = config);

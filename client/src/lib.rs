@@ -15,7 +15,8 @@ use crate::ledger::LedgerAgent;
 
 pub mod cmc;
 pub mod ledger;
-pub mod upload;
+pub mod signature;
+pub mod storage;
 
 pub const LEDGER: &str = "ryjl3-tyaaa-aaaaa-aaaba-cai";
 pub const CMC: &str = "rkp4c-7iaaa-aaaaa-aaaca-cai";
