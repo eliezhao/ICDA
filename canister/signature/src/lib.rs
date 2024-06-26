@@ -111,7 +111,7 @@ async fn insert_digest_and_generate_confirmation(digest: [u8; 32]) {
         let mut batch_info = m.get(&"current_index".to_string()).unwrap_or_default();
 
         // 更新current index
-        // start with 1, leaf index : [1, BATCH_CONFIRMATION_SIZE]
+        // start with 1, leaf index: [1, BATCH_CONFIRMATION_SIZE]
         batch_info.leaf_index += 1;
 
         // 获取到的肯定是不满的current index，更新当前的batch index并且插入本key的batch index

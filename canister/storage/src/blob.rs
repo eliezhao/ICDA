@@ -1,8 +1,9 @@
+//! 上传处理三个事情
+//! btree map
+//! time heap
+//! signature
+
 use std::borrow::Cow;
-/// 上传处理三个事情
-/// btree map
-/// time heap
-/// signature
 use std::cell::RefMut;
 use std::cmp::Ordering;
 
@@ -26,7 +27,7 @@ pub fn handle_upload(mut map: RefMut<BTreeMap<String, Vec<u8>, Memory>>, chunk: 
     }
 
     let mut value = map.get(&hex_digest).unwrap();
-    value.extend_from_slice(&chunk.blob);
+    value.extend_from_slice(&chunk.data);
     let _ = map.insert(hex_digest, value);
 }
 
@@ -43,7 +44,7 @@ pub struct BlobChunk {
     pub total: usize,
 
     /// The actual chunk.
-    pub blob: Vec<u8>,
+    pub data: Vec<u8>,
 }
 
 #[derive(CandidType, Deserialize, Serialize, Clone, Default)]

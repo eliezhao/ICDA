@@ -1,7 +1,7 @@
 type Blob = record { data : blob; next : opt nat64 };
 type BlobChunk = record {
   total : nat64;
-  \"blob\" : blob;
+  data : blob;
   timestamp : nat;
   digest : blob;
 };

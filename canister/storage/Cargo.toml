@@ -1,5 +1,5 @@
 [package]
-name = "canister"
+name = "storage"
 version = "0.1.0"
 edition = "2021"
 
@@ -14,6 +14,4 @@ ic-cdk-macros = "0.13.2"
 ic-stable-structures = "0.6"
 hex = { workspace = true }
 serde = { workspace = true }
-serde_json = { workspace = true }
 candid = { workspace = true }
-sha2 = { workspace = true }
