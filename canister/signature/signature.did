@@ -13,13 +13,12 @@ type ConfirmationStatus = variant {
 type Proof = record {
   leaf_digest : blob;
   leaf_index : nat64;
-  proof_hashes : vec blob;
+  proof_bytes : blob;
 };
 type Result = variant { Ok : blob; Err : text };
 service : {
   get_confirmation : (blob) -> (ConfirmationStatus);
   insert_digest : (blob) -> ();
-  insert_digest_and_generate_confirmation : (blob) -> ();
   public_key : () -> (Result);
   update_config : (Config) -> ();
 }

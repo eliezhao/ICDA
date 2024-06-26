@@ -25,7 +25,7 @@ pub enum ConfirmationStatus {
 
 #[derive(CandidType, Deserialize, Serialize, Clone)]
 pub struct Proof {
-    pub proof_hashes: Vec<[u8; 32]>,
+    pub proof_bytes: Vec<u8>,
     pub leaf_index: usize,
     pub leaf_digest: [u8; 32],
 }

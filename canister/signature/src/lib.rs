@@ -85,10 +85,10 @@ fn get_confirmation(digest: [u8; 32]) -> ConfirmationStatus {
 
             let merkle_tree = MerkleTree::<Sha256>::from_leaves(&batch_confirmation.nodes);
             let root = merkle_tree.root().unwrap();
-            let proof_hashes = merkle_tree.proof(&[leaf_index]).proof_hashes().to_vec();
+            let proof_bytes = merkle_tree.proof(&[leaf_index]).to_bytes();
 
             let proof = Proof {
-                proof_hashes,
+                proof_bytes,
                 leaf_index,
                 leaf_digest: digest,
             };
