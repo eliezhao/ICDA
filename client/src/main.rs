@@ -7,45 +7,35 @@ use candid::{CandidType, Deserialize};
 use clap::Parser;
 use rand::Rng;
 use sha2::Digest;
+use tracing::info;
+
+use client::interface::{BlobKey, ICStorage};
 
 const E8S: u64 = 100_000_000;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // println!("Begin Test");
-    // let mut da = ICStorage::new("../identity.pem".to_string()).unwrap();
-    //
-    // let mut file = OpenOptions::new()
-    //     .write(true)
-    //     .read(true)
-    //     .create(true)
-    //     .open("blob_key.json")?;
-    //
-    // let mut rng = rand::thread_rng();
-    // //准备4个blob
-    // let mut batch_1 = vec![vec![0u8; 3 * 1024 * 1024]; cli.num]; // 10个3M
-    // for i in &mut batch_1 {
-    //     rng.fill(&mut i[..]);
-    // }
-    //
-    // println!("{}", "-".repeat(20));
+    info!("Begin Test");
+    let mut da = ICStorage::new("../identity.pem").unwrap();
+
+    let mut rng = rand::thread_rng();
+    //准备4个blob
+    let mut batch_1 = vec![vec![0u8; 3 * 1024 * 1024]; 10]; // 10个3M
+    for i in &mut batch_1 {
+        rng.fill(&mut i[..]);
+    }
+
     // let mut response = Vec::new();
     //
     // for (index, item) in batch_1.iter().enumerate() {
-    //     println!("Batch Index: {}", index);
+    //     info!("Batch Index: {}", index);
     //     let res = da.save_blob(item.to_vec()).await?;
     //     let raw = String::from_utf8(res).unwrap();
     //     let key = serde_json::from_str::<BlobKey>(&raw).unwrap();
     //     response.push(key)
     // }
     //
-    // let json_value = json!(response);
-    // file.write_all(json_value.to_string().as_bytes())?;
-    //
-    // tokio::time::sleep(Duration::from_secs(180)).await;
     // // 获取Blob
-    // // 反序列化 JSON 数据到 Vec
-    // let file_contents = fs::read_to_string("blob_key.json")?;
     // let response: Vec<BlobKey> = serde_json::from_str(&file_contents)?;
     //
     // println!("{}", "-".repeat(20));

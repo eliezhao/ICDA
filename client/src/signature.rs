@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
 use candid::{CandidType, Decode, Deserialize, Encode, Principal};
@@ -38,13 +39,14 @@ pub struct Config {
     pub owner: Principal, // who can change confirmation config
 }
 
-pub struct SignatureCanister<'agent> {
+#[derive(Clone)]
+pub struct SignatureCanister {
     canister_id: Principal,
-    agent: &'agent Agent,
+    agent: Arc<Agent>,
 }
 
-impl<'agent> SignatureCanister<'agent> {
-    pub fn new(canister_id: Principal, agent: &'agent Agent) -> Self {
+impl SignatureCanister {
+    pub fn new(canister_id: Principal, agent: Arc<Agent>) -> Self {
         Self { canister_id, agent }
     }
 

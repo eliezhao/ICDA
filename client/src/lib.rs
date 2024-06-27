@@ -14,14 +14,14 @@ use crate::cmc::CmcAgent;
 use crate::ledger::LedgerAgent;
 
 pub mod cmc;
+pub mod interface;
 pub mod ledger;
 pub mod signature;
+
 pub mod storage;
 
 pub const LEDGER: &str = "ryjl3-tyaaa-aaaaa-aaaba-cai";
 pub const CMC: &str = "rkp4c-7iaaa-aaaaa-aaaca-cai";
-
-mod test;
 
 // todo : 选10个合适的subnet，至少120G可用stable memory
 pub const SUBNETS: [&str; 10] =
