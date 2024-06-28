@@ -6,8 +6,8 @@ use candid::{CandidType, Decode, Deserialize, Encode, Principal};
 use ic_agent::Agent;
 use rs_merkle::algorithms::Sha256;
 use rs_merkle::MerkleProof;
-use secp256k1::ecdsa::Signature;
 use secp256k1::{Message, PublicKey, Secp256k1};
+use secp256k1::ecdsa::Signature;
 use serde::Serialize;
 
 #[derive(CandidType, Deserialize, Serialize, Clone)]

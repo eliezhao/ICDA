@@ -10,11 +10,19 @@ use std::borrow::Cow;
 use std::collections::HashSet;
 
 use candid::{CandidType, Decode, Deserialize, Encode, Principal};
-use ic_stable_structures::storable::Bound;
 use ic_stable_structures::Storable;
+use ic_stable_structures::storable::Bound;
 use serde::Serialize;
 
 use crate::CONFIRMATION_CONFIG;
+
+const REPLICA_NUM: usize = 2;
+
+const COLLECTION_SIZE: usize = 20;
+const CANISTER_COLLECTIONS: [[&str; REPLICA_NUM]; COLLECTION_SIZE] =
+    [["hxctj-oiaaa-aaaap-qhltq-cai", "v3y75-6iaaa-aaaak-qikaa-cai"]; COLLECTION_SIZE];
+const CONFIRMATION_BATCH_SIZE: u32 = 12;
+pub const CONFIRMATION_LIVE_TIME: u32 = 60 * 60 * 24 * 7 + 1; // 1 week in nanos
 
 #[derive(CandidType, Deserialize, Serialize, Clone)]
 pub enum ConfirmationStatus {
@@ -102,10 +110,17 @@ pub struct Config {
 
 impl Default for Config {
     fn default() -> Self {
+        let mut da_canisters = HashSet::with_capacity(COLLECTION_SIZE);
+        CANISTER_COLLECTIONS.iter().for_each(|x| {
+            x.iter().for_each(|x| {
+                da_canisters.insert(Principal::from_text(x).unwrap());
+            });
+        });
+
         Self {
-            confirmation_live_time: 60 * 60 * 24 * 7 + 1, // 7 days
-            confirmation_batch_size: 12,                  // 12 blobs per confirmation
-            da_canisters: HashSet::with_capacity(20),
+            confirmation_live_time: CONFIRMATION_LIVE_TIME, // 7 days in batch number
+            confirmation_batch_size: CONFIRMATION_BATCH_SIZE, // 12 blobs per confirmation
+            da_canisters,
             owner: Principal::from_text(
                 "ytoqu-ey42w-sb2ul-m7xgn-oc7xo-i4btp-kuxjc-b6pt4-dwdzu-kfqs4-nae",
             )

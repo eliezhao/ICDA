@@ -4,11 +4,16 @@
 
 extern crate core;
 
+use std::collections::{HashMap, HashSet};
 use std::io::Write;
+use std::sync::Arc;
 
 use anyhow::Result;
-use candid::{CandidType, Deserialize};
+use candid::{CandidType, Deserialize, Principal};
+use candid::pretty::utils::ident;
 use clap::{Parser, Subcommand, ValueEnum};
+use ic_agent::Agent;
+use ic_agent::identity::BasicIdentity;
 use rand::Rng;
 use serde_json::json;
 use sha2::Digest;
@@ -18,7 +23,13 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tracing::{info, Level};
 use tracing_subscriber::fmt;
 
-use client::canister_interface::{BlobKey, ICStorage};
+use client::canister_interface::{
+    BLOB_LIVE_TIME, BlobKey, CANISTER_COLLECTIONS, CONFIRMATION_BATCH_SIZE, CONFIRMATION_LIVE_TIME,
+    ICStorage, SIGNATURE_CANISTER,
+};
+use client::signature;
+use client::signature::SignatureCanister;
+use client::storage::StorageCanister;
 
 const E8S: u64 = 100_000_000;
 
@@ -78,6 +89,41 @@ async fn main() -> Result<()> {
             talk_to_server(ip).await;
         }
     }
+
+    Ok(())
+}
+
+async fn init_signature_canister(pem_path: String) -> Result<()> {
+    let identity = BasicIdentity::from_pem_file(pem_path)?;
+    let agent = Agent::builder()
+        .with_url("https://ic0.app")
+        .with_identity(identity)
+        .build()
+        .unwrap();
+    let owner = agent.get_principal().unwrap();
+    let da_canisters = HashSet::from_iter(
+        CANISTER_COLLECTIONS
+            .iter()
+            .map(|x| {
+                x.iter()
+                    .map(|x| Principal::from_text(x).unwrap())
+                    .collect::<Vec<Principal>>()
+            })
+            .collect::<Vec<_>>()
+            .concat(),
+    );
+    let confirmation_live_time = CONFIRMATION_LIVE_TIME;
+    let confirmation_batch_size = CONFIRMATION_BATCH_SIZE;
+    let config = signature::Config {
+        owner,
+        da_canisters,
+        confirmation_live_time,
+        confirmation_batch_size,
+    };
+
+    let signature_canister_id = Principal::from_text(SIGNATURE_CANISTER).unwrap();
+    let signature_canister = SignatureCanister::new(signature_canister_id, Arc::new(agent));
+    signature_canister.update_config(config).await?;
 
     Ok(())
 }

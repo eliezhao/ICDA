@@ -6,8 +6,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use anyhow::bail;
 use anyhow::Result;
 use candid::{Deserialize, Principal};
-use ic_agent::identity::BasicIdentity;
 use ic_agent::Agent;
+use ic_agent::identity::BasicIdentity;
 use rand::random;
 use serde::Serialize;
 use sha2::Digest;
@@ -16,16 +16,20 @@ use tracing::{error, info};
 use crate::signature::SignatureCanister;
 use crate::storage::{BlobChunk, RoutingInfo, StorageCanister};
 
-const REPLICA_NUM: usize = 2;
+pub const REPLICA_NUM: usize = 2;
 
-const COLLECTION_SIZE: usize = 20;
+pub const COLLECTION_SIZE: usize = 20;
 // 20 subnets with 40 canisters
-const CANISTER_COLLECTIONS: [[&str; REPLICA_NUM]; COLLECTION_SIZE] =
+pub const CANISTER_COLLECTIONS: [[&str; REPLICA_NUM]; COLLECTION_SIZE] =
     [["hxctj-oiaaa-aaaap-qhltq-cai", "v3y75-6iaaa-aaaak-qikaa-cai"]; COLLECTION_SIZE];
 
-const LIVE_TIME: u128 = 60 * 60 * 24 * 7 * 1_000_000_000; // 1 week in nanos
+pub const SIGNATURE_CANISTER: &str = "r34pn-oaaaa-aaaak-qinga-cai";
 
-const SIGNATURE_CANISTER: &str = "r34pn-oaaaa-aaaak-qinga-cai";
+// 1 week in nanos
+pub const BLOB_LIVE_TIME: u128 = 7 * 24 * 60 * 60 * 1_000_000_000;
+
+pub const CONFIRMATION_BATCH_SIZE: u32 = 12;
+pub const CONFIRMATION_LIVE_TIME: u32 = 60 * 60 * 24 * 7 + 1; // 1 week in nanos
 
 // canister存的时候主要用digest,time用server的time
 #[derive(Serialize, Deserialize, Clone)]
@@ -125,7 +129,7 @@ impl ICStorage {
 
         let blob_key = BlobKey {
             digest: blob_digest,
-            expiry_timestamp: timestamp + LIVE_TIME,
+            expiry_timestamp: timestamp + BLOB_LIVE_TIME,
             routing_info: RoutingInfo {
                 total_size: blob.len(),
                 host_canisters: routing_canisters,

@@ -23,8 +23,8 @@ use std::cell::RefCell;
 use candid::{candid_method, Principal};
 use ic_cdk::{caller, print, spawn};
 use ic_cdk_macros::{query, update};
-use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
 use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap};
+use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
 use rs_merkle::algorithms::Sha256;
 use rs_merkle::MerkleTree;
 
@@ -32,8 +32,8 @@ use crate::confirmation::{
     BatchConfirmation, BatchInfo, Config, Confirmation, ConfirmationStatus, Proof,
 };
 use crate::signature::{
-    mgmt_canister_id, ECDSAPublicKey, ECDSAPublicKeyReply, EcdsaKeyIds, SignWithECDSA,
-    SignWithECDSAReply, SignatureReply,
+    EcdsaKeyIds, ECDSAPublicKey, ECDSAPublicKeyReply, mgmt_canister_id, SignatureReply,
+    SignWithECDSA, SignWithECDSAReply,
 };
 
 mod confirmation;
@@ -115,6 +115,10 @@ async fn insert_digest_and_generate_confirmation(digest: [u8; 32]) {
     let hexed_digest = hex::encode(digest);
 
     INDEX_MAP.with_borrow_mut(|m| {
+        if m.contains_key(&hexed_digest) {
+            return;
+        }
+
         // get current index
         let mut batch_info = m.get(&"current_index".to_string()).unwrap_or_default();
 
