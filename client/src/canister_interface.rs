@@ -192,6 +192,7 @@ impl ICStorage {
         for blob in blobs {
             let digest: [u8; 32] = sha2::Sha256::digest(&blob).into();
             if digest.eq(&key.digest) {
+                info!("ICStorage::get_blob(): get blob successfully, digest match");
                 return Ok(blob);
             } else {
                 error!("ICStorage::get_blob(): blob digest not match\nkey digest:{:?}\nget blob digest{:?}", key.digest, digest);

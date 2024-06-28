@@ -1,5 +1,5 @@
 /target
 .idea
-/identity.pem
-/bin/20240619.log
+/bin/identity.pem
+/log/20240619.log
 /bin/client
