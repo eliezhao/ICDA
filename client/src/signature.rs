@@ -6,8 +6,8 @@ use candid::{CandidType, Decode, Deserialize, Encode, Principal};
 use ic_agent::Agent;
 use rs_merkle::algorithms::Sha256;
 use rs_merkle::MerkleProof;
-use secp256k1::{Message, PublicKey, Secp256k1};
 use secp256k1::ecdsa::Signature;
+use secp256k1::{Message, PublicKey, Secp256k1};
 use serde::Serialize;
 
 #[derive(CandidType, Deserialize, Serialize, Clone)]
@@ -50,8 +50,8 @@ impl SignatureCanister {
         Self { canister_id, agent }
     }
 
-    pub async fn update_config(&self, config: Config) -> Result<()> {
-        let arg = Encode!(&config).unwrap();
+    pub async fn update_config(&self, config: &Config) -> Result<()> {
+        let arg = Encode!(config).unwrap();
         let _ = self
             .agent
             .update(&self.canister_id, "update_config")
@@ -89,30 +89,31 @@ impl SignatureCanister {
         Ok(confirmation)
     }
 
-    pub async fn verify_confirmation(&self, confirmation: Confirmation) -> bool {
+    pub async fn verify_confirmation(&self, confirmation: &Confirmation) -> bool {
         let public_key = self.public_key().await.expect("failed to get public key");
 
         // verify signature
-        let compact_sig = hex::decode(confirmation.signature).expect("failed to decode signature");
+        let compact_sig =
+            hex::decode(confirmation.signature.clone()).expect("failed to decode signature");
         let sig = Signature::from_compact(&compact_sig).expect("failed to parse signature");
         let msg = Message::from_digest_slice(confirmation.root.as_ref())
             .expect("failed to parse message");
         let pubkey = PublicKey::from_slice(&public_key).expect("failed to parse public key");
         let secp = Secp256k1::new();
-        let signature_valid = secp.verify_ecdsa(&msg, &sig, &pubkey).is_ok();
+        if !secp.verify_ecdsa(&msg, &sig, &pubkey).is_ok() {
+            return false;
+        }
 
         // verify merkle proof
-        let merkle_proof = MerkleProof::<Sha256>::try_from(confirmation.proof.proof_bytes)
-            .expect("failed to parse merkle proof");
+        let merkle_proof =
+            MerkleProof::<Sha256>::try_from(confirmation.proof.proof_bytes.as_slice())
+                .expect("failed to parse merkle proof");
 
-        // todo: 标准化
-        let proof_valid = merkle_proof.verify(
+        merkle_proof.verify(
             confirmation.root,
             &[confirmation.proof.leaf_index],
             &[confirmation.proof.leaf_digest],
             12,
-        );
-
-        signature_valid && proof_valid
+        )
     }
 }

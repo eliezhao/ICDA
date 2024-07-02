@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 
-use candid::{candid_method, Principal};
+use candid::{candid_method, export_service, Principal};
 use ic_cdk::caller;
 use ic_cdk_macros::*;
 use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
@@ -100,30 +100,34 @@ fn get_blob_with_index(digest: [u8; 32], index: usize) -> Blob {
 async fn save_blob(chunk: BlobChunk) -> Result<(), String> {
     assert!(check_caller(caller()), "only owner can save blob");
 
-    // 1. insert new blob id into time heap
-    // 2. remove expired blob id from time heap
-    // 3. if expired blob id exists, return expired key
-    let expired_key =
-        TIMEHEAP.with(|t| handle_time_heap(t.borrow_mut(), chunk.digest, chunk.timestamp));
+    if blob_exist(chunk.digest) {
+        BLOBS.with(|m| blob::handle_upload(m.borrow_mut(), &chunk));
+    } else {
+        // 1. insert new blob id into time heap
+        // 2. remove expired blob id from time heap
+        // 3. if expired blob id exists, return expired key
+        let expired_key =
+            TIMEHEAP.with(|t| handle_time_heap(t.borrow_mut(), chunk.digest, chunk.timestamp));
 
-    // 1. insert blob share into map
-    // 2. if expired blob id exists, remove it from a map
-    BLOBS.with(|m| {
-        // remove expired blob
-        if let Some(expired_blob) = expired_key {
-            let hex_digest = hex::encode(expired_blob.digest);
-            m.borrow_mut().remove(&hex_digest);
-        }
+        // 1. insert blob share into map
+        // 2. if expired blob id exists, remove it from a map
+        BLOBS.with(|m| {
+            // remove expired blob
+            if let Some(expired_blob) = expired_key {
+                let hex_digest = hex::encode(expired_blob.digest);
+                m.borrow_mut().remove(&hex_digest);
+            }
 
-        blob::handle_upload(m.borrow_mut(), &chunk)
-    });
+            blob::handle_upload(m.borrow_mut(), &chunk)
+        });
 
-    let _: Result<(), _> = ic_cdk::call(
-        DACONFIG.with_borrow(|c| c.signature_canister),
-        "insert_digest",
-        (chunk.digest,),
-    )
-    .await;
+        let _: Result<(), _> = ic_cdk::call(
+            DACONFIG.with_borrow(|c| c.signature_canister),
+            "insert_digest",
+            (chunk.digest,),
+        )
+        .await;
+    }
 
     Ok(())
 }
@@ -149,6 +153,11 @@ fn update_config(config: Config) {
 
 fn check_caller(c: Principal) -> bool {
     c.eq(&DACONFIG.with_borrow(|c| c.owner))
+}
+
+fn blob_exist(digest: [u8; 32]) -> bool {
+    let hexed_digest = hex::encode(digest);
+    BLOBS.with(|m| m.borrow().contains_key(&hexed_digest))
 }
 
 candid::export_service!();

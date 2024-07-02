@@ -6,19 +6,20 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use anyhow::bail;
 use anyhow::Result;
 use candid::{Deserialize, Principal};
-use ic_agent::Agent;
 use ic_agent::identity::BasicIdentity;
+use ic_agent::Agent;
 use rand::random;
 use serde::Serialize;
 use sha2::Digest;
 use tracing::{error, info};
 
-use crate::signature::SignatureCanister;
+use crate::signature::{Confirmation, ConfirmationStatus, SignatureCanister};
 use crate::storage::{BlobChunk, RoutingInfo, StorageCanister};
 
 pub const REPLICA_NUM: usize = 2;
 
 pub const COLLECTION_SIZE: usize = 20;
+
 // 20 subnets with 40 canisters
 pub const CANISTER_COLLECTIONS: [[&str; REPLICA_NUM]; COLLECTION_SIZE] =
     [["hxctj-oiaaa-aaaap-qhltq-cai", "v3y75-6iaaa-aaaak-qikaa-cai"]; COLLECTION_SIZE];
@@ -27,7 +28,6 @@ pub const SIGNATURE_CANISTER: &str = "r34pn-oaaaa-aaaak-qinga-cai";
 
 // 1 week in nanos
 pub const BLOB_LIVE_TIME: u128 = 7 * 24 * 60 * 60 * 1_000_000_000;
-
 pub const CONFIRMATION_BATCH_SIZE: u32 = 12;
 pub const CONFIRMATION_LIVE_TIME: u32 = 60 * 60 * 24 * 7 + 1; // 1 week in nanos
 
@@ -175,6 +175,7 @@ impl ICStorage {
                 let _ = _tx.send((cid, res)).await;
             });
         }
+        tracing::info!("ICStorage::get_blob(): waiting for blobs");
 
         let mut res = Vec::with_capacity(REPLICA_NUM);
         let _ = rx.recv_many(&mut res, REPLICA_NUM).await;
@@ -230,12 +231,12 @@ impl ICStorage {
         // 创建一样大小的buffer
         let mut blob = Vec::with_capacity(key.routing_info.total_size);
 
-        let slice = sc.get_blob(key.digest).await?;
+        let mut slice = sc.get_blob(key.digest).await?;
         blob.extend(slice.data);
 
         while let Some(next_index) = slice.next {
             // get blob by index
-            let slice = sc.get_blob_with_index(key.digest, next_index).await?;
+            slice = sc.get_blob_with_index(key.digest, next_index).await?;
             blob.extend(slice.data);
         }
 
@@ -251,7 +252,26 @@ impl ICStorage {
         Ok(blob)
     }
 
-    // get storage canisters in teh current round
+    pub async fn get_confirmation(
+        sc: &SignatureCanister,
+        digest: [u8; 32],
+    ) -> Result<ConfirmationStatus> {
+        match sc.get_confirmation(digest).await {
+            Ok(confirmation) => Ok(confirmation),
+            Err(e) => {
+                bail!(
+                    "ICStorage::get_confirmation(): failed to get confirmation, error: {}",
+                    e
+                );
+            }
+        }
+    }
+
+    pub async fn verify_confirmation(sc: &SignatureCanister, confirmation: &Confirmation) -> bool {
+        sc.verify_confirmation(confirmation).await
+    }
+
+    // get storage canisters in the current round
     fn get_storage_canisters(&mut self) -> Result<Vec<StorageCanister>> {
         let index = self
             .canister_collection_index
@@ -273,5 +293,38 @@ impl ICStorage {
             .collect::<Vec<_>>();
 
         Ok(storage_canisters)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_verify_confirmation() {
+        let digest = [
+            246, 78, 26, 27, 197, 96, 134, 30, 120, 14, 140, 108, 88, 191, 147, 150, 14, 59, 70,
+            144, 20, 143, 31, 36, 83, 76, 179, 182, 222, 133, 179, 223,
+        ];
+
+        let ics = ICStorage::new("../bin/identity.pem").unwrap();
+
+        let sc = ics.signature_canister.clone();
+
+        // use sc get confirmation of the digest and verify
+        let confirmation = sc.get_confirmation(digest).await.unwrap();
+
+        match confirmation {
+            ConfirmationStatus::Confirmed(confirmation) => {
+                let res = sc.verify_confirmation(&confirmation).await;
+                assert_eq!(res, true, "failed to verify confirmation");
+            }
+            ConfirmationStatus::Pending => {
+                panic!("confirmation is pending")
+            }
+            ConfirmationStatus::Invalid => {
+                panic!("digest is invalid")
+            }
+        }
     }
 }

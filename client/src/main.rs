@@ -9,11 +9,11 @@ use std::io::Write;
 use std::sync::Arc;
 
 use anyhow::Result;
-use candid::{CandidType, Deserialize, Principal};
 use candid::pretty::utils::ident;
+use candid::{CandidType, Deserialize, Principal};
 use clap::{Parser, Subcommand, ValueEnum};
-use ic_agent::Agent;
 use ic_agent::identity::BasicIdentity;
+use ic_agent::Agent;
 use rand::Rng;
 use serde_json::json;
 use sha2::Digest;
@@ -24,8 +24,8 @@ use tracing::{info, Level};
 use tracing_subscriber::fmt;
 
 use client::canister_interface::{
-    BLOB_LIVE_TIME, BlobKey, CANISTER_COLLECTIONS, CONFIRMATION_BATCH_SIZE, CONFIRMATION_LIVE_TIME,
-    ICStorage, SIGNATURE_CANISTER,
+    BlobKey, ICStorage, BLOB_LIVE_TIME, CANISTER_COLLECTIONS, CONFIRMATION_BATCH_SIZE,
+    CONFIRMATION_LIVE_TIME, SIGNATURE_CANISTER,
 };
 use client::signature;
 use client::signature::SignatureCanister;
@@ -123,7 +123,7 @@ async fn init_signature_canister(pem_path: String) -> Result<()> {
 
     let signature_canister_id = Principal::from_text(SIGNATURE_CANISTER).unwrap();
     let signature_canister = SignatureCanister::new(signature_canister_id, Arc::new(agent));
-    signature_canister.update_config(config).await?;
+    signature_canister.update_config(&config).await?;
 
     Ok(())
 }
