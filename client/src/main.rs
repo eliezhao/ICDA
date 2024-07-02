@@ -29,7 +29,7 @@ use client::canister_interface::{
 };
 use client::signature;
 use client::signature::SignatureCanister;
-use client::storage::StorageCanister;
+use client::storage::{RoutingInfo, StorageCanister};
 
 const E8S: u64 = 100_000_000;
 
@@ -206,3 +206,31 @@ async fn put_to_canister(batch_number: usize, key_path: String, da: &mut ICStora
 }
 
 async fn talk_to_server(ip: String) {}
+
+#[tokio::test]
+async fn test_get() {
+    let digest = [
+        18, 90, 240, 20, 215, 92, 13, 209, 227, 120, 60, 244, 105, 121, 229, 242, 116, 225, 247,
+        115, 154, 188, 2, 76, 20, 21, 17, 98, 61, 40, 186, 173,
+    ];
+
+    let expiry_timestamp = 1720493411936410000;
+    let routing_info = RoutingInfo {
+        total_size: 3145728,
+        host_canisters: vec![
+            Principal::from_text("hxctj-oiaaa-aaaap-qhltq-cai").unwrap(),
+            Principal::from_text("v3y75-6iaaa-aaaak-qikaa-cai").unwrap(),
+        ],
+    };
+
+    let mut da = ICStorage::new("../bin/identity.pem").unwrap();
+
+    let blob_key = BlobKey {
+        digest,
+        expiry_timestamp,
+        routing_info,
+    };
+
+    let r = da.get_blob(blob_key).await;
+    assert!(r.is_ok());
+}

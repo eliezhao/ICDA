@@ -175,7 +175,7 @@ impl ICStorage {
                 let _ = _tx.send((cid, res)).await;
             });
         }
-        tracing::info!("ICStorage::get_blob(): waiting for blobs");
+        info!("ICStorage::get_blob(): waiting for blobs");
 
         let mut res = Vec::with_capacity(REPLICA_NUM);
         let _ = rx.recv_many(&mut res, REPLICA_NUM).await;
@@ -303,8 +303,8 @@ mod test {
     #[tokio::test]
     async fn test_verify_confirmation() {
         let digest = [
-            246, 78, 26, 27, 197, 96, 134, 30, 120, 14, 140, 108, 88, 191, 147, 150, 14, 59, 70,
-            144, 20, 143, 31, 36, 83, 76, 179, 182, 222, 133, 179, 223,
+            18, 90, 240, 20, 215, 92, 13, 209, 227, 120, 60, 244, 105, 121, 229, 242, 116, 225,
+            247, 115, 154, 188, 2, 76, 20, 21, 17, 98, 61, 40, 186, 173,
         ];
 
         let ics = ICStorage::new("../bin/identity.pem").unwrap();

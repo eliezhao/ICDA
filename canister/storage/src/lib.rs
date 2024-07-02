@@ -7,13 +7,13 @@ use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemor
 use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap, StableMinHeap};
 
 use crate::blob::{Blob, BlobChunk, BlobId};
-use crate::da::Config;
-use crate::time_heap::handle_time_heap;
+use crate::config::Config;
+use crate::time_heap::insert_time_heap;
 
 mod time_heap;
 
 mod blob;
-mod da;
+mod config;
 
 type Memory = VirtualMemory<DefaultMemoryImpl>;
 
@@ -101,13 +101,13 @@ async fn save_blob(chunk: BlobChunk) -> Result<(), String> {
     assert!(check_caller(caller()), "only owner can save blob");
 
     if blob_exist(chunk.digest) {
-        BLOBS.with(|m| blob::handle_upload(m.borrow_mut(), &chunk));
+        BLOBS.with(|m| blob::insert_map(m.borrow_mut(), &chunk));
     } else {
         // 1. insert new blob id into time heap
         // 2. remove expired blob id from time heap
         // 3. if expired blob id exists, return expired key
         let expired_key =
-            TIMEHEAP.with(|t| handle_time_heap(t.borrow_mut(), chunk.digest, chunk.timestamp));
+            TIMEHEAP.with(|t| insert_time_heap(t.borrow_mut(), chunk.digest, chunk.timestamp));
 
         // 1. insert blob share into map
         // 2. if expired blob id exists, remove it from a map
@@ -118,7 +118,7 @@ async fn save_blob(chunk: BlobChunk) -> Result<(), String> {
                 m.borrow_mut().remove(&hex_digest);
             }
 
-            blob::handle_upload(m.borrow_mut(), &chunk)
+            blob::insert_map(m.borrow_mut(), &chunk)
         });
 
         let _: Result<(), _> = ic_cdk::call(

@@ -58,7 +58,7 @@ thread_local! {
 
     // batch index => BatchConfirmation
     static BATCH_CONFIRMATION: RefCell<StableBTreeMap<u32, BatchConfirmation, Memory>> = RefCell::new(StableBTreeMap::init(
-        MEMORY_MANAGER.with_borrow(|m| m.get(MemoryId::new(0)))
+        MEMORY_MANAGER.with_borrow(|m| m.get(MemoryId::new(1)))
     ));
 }
 

@@ -10,8 +10,8 @@ use std::borrow::Cow;
 use std::collections::HashSet;
 
 use candid::{CandidType, Decode, Deserialize, Encode, Principal};
-use ic_stable_structures::Storable;
 use ic_stable_structures::storable::Bound;
+use ic_stable_structures::Storable;
 use serde::Serialize;
 
 use crate::CONFIRMATION_CONFIG;
@@ -95,7 +95,7 @@ impl Storable for BatchInfo {
     }
 
     const BOUND: Bound = Bound::Bounded {
-        max_size: 8,
+        max_size: 33,
         is_fixed_size: true,
     };
 }

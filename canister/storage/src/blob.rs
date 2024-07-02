@@ -17,7 +17,7 @@ use crate::Memory;
 
 // 1. 第一次上传，则创建一个空的vec，大小为total
 // 2. 之后的上传，将chunk append到vec中
-pub fn handle_upload(mut map: RefMut<BTreeMap<String, Vec<u8>, Memory>>, chunk: &BlobChunk) {
+pub fn insert_map(mut map: RefMut<BTreeMap<String, Vec<u8>, Memory>>, chunk: &BlobChunk) {
     // 获取map中有无key - value
     let hex_digest = hex::encode(chunk.digest);
     if map.get(&hex_digest).is_none() {
