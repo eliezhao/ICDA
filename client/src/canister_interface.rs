@@ -53,7 +53,7 @@ impl Debug for BlobKey {
 pub struct ICStorage {
     canister_collection_index: Option<u8>,
     storage_canisters_map: HashMap<Principal, StorageCanister>,
-    signature_canister: SignatureCanister,
+    pub signature_canister: SignatureCanister,
 }
 
 impl ICStorage {
