@@ -62,6 +62,7 @@ enum Mode {
 enum Action {
     Put,
     Get,
+    Verify
 }
 
 #[tokio::main]
@@ -141,6 +142,9 @@ async fn talk_to_canister(
         }
         Action::Get => {
             let _ = get_from_canister(key_path, &da).await;
+        }
+        Action::Verify => {
+            let _ = verify_confirmation(key_path).await;
         }
     }
 }
@@ -249,5 +253,6 @@ async fn talk_to_server(ip: String) {}
 
 #[tokio::test]
 async fn test() {
+
     let _ = verify_confirmation("../bin/blob_key.".to_string()).await;
 }
