@@ -10,21 +10,21 @@ use secp256k1::ecdsa::Signature;
 use secp256k1::{Message, PublicKey, Secp256k1};
 use serde::Serialize;
 
-#[derive(CandidType, Deserialize, Serialize, Clone)]
+#[derive(CandidType, Deserialize, Serialize, Clone, Debug)]
 pub struct Proof {
     pub proof_bytes: Vec<u8>,
     pub leaf_index: usize,
     pub leaf_digest: [u8; 32],
 }
 
-#[derive(CandidType, Deserialize, Serialize, Clone)]
+#[derive(CandidType, Deserialize, Serialize, Clone, Debug)]
 pub struct Confirmation {
     pub root: [u8; 32],    // merkle root hash
     pub proof: Proof,      // merkle proof
     pub signature: String, // hex encoded signature
 }
 
-#[derive(CandidType, Deserialize, Serialize, Clone)]
+#[derive(CandidType, Deserialize, Serialize, Clone, Debug)]
 pub enum ConfirmationStatus {
     Pending,
     Confirmed(Confirmation),

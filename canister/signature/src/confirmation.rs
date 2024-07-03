@@ -21,8 +21,8 @@ const REPLICA_NUM: usize = 2;
 const COLLECTION_SIZE: usize = 20;
 const CANISTER_COLLECTIONS: [[&str; REPLICA_NUM]; COLLECTION_SIZE] =
     [["hxctj-oiaaa-aaaap-qhltq-cai", "v3y75-6iaaa-aaaak-qikaa-cai"]; COLLECTION_SIZE];
-const CONFIRMATION_BATCH_SIZE: u32 = 12;
-pub const CONFIRMATION_LIVE_TIME: u32 = 60 * 60 * 24 * 7 + 1; // 1 week in nanos
+const CONFIRMATION_BATCH_SIZE: usize = 12;
+pub const CONFIRMATION_LIVE_TIME: u32 = 12 * 60 * 24 * 7 + 1; // 1/12 * 1 week in secs
 
 #[derive(CandidType, Deserialize, Serialize, Clone)]
 pub enum ConfirmationStatus {
@@ -45,7 +45,7 @@ pub struct Confirmation {
     pub signature: String, // hex encoded signature
 }
 
-#[derive(CandidType, Deserialize, Serialize, Clone)]
+#[derive(CandidType, Deserialize, Serialize, Clone, Debug)]
 pub struct BatchConfirmation {
     pub signature: Option<String>,
     pub root: [u8; 32],
@@ -62,7 +62,7 @@ impl Storable for BatchConfirmation {
     }
 
     const BOUND: Bound = Bound::Bounded {
-        max_size: 500, // 500 bytes > 实际使用(64 bytes signature + 12 * 32 bytes nodes)
+        max_size: 1 << 10, // 1024 bytes > 实际使用(64 bytes signature + 12 * 32 bytes nodes) + candid = 530 bytes
         is_fixed_size: false,
     };
 }
@@ -73,19 +73,16 @@ impl Default for BatchConfirmation {
             signature: None,
             root: [0x00u8; 32],
             nodes: Vec::with_capacity(
-                CONFIRMATION_CONFIG.with_borrow(|s| s.confirmation_batch_size) as usize,
+                CONFIRMATION_CONFIG.with_borrow(|s| s.confirmation_batch_size),
             ),
         }
     }
 }
 
 #[derive(CandidType, Deserialize, Serialize, Clone, Default)]
-pub(crate) struct BatchInfo {
-    pub batch_index: u32,
-    pub leaf_index: usize,
-}
+pub(crate) struct BatchIndex(pub u32);
 
-impl Storable for BatchInfo {
+impl Storable for BatchIndex {
     fn to_bytes(&self) -> Cow<[u8]> {
         Cow::Owned(Encode!(self).unwrap())
     }
@@ -95,14 +92,14 @@ impl Storable for BatchInfo {
     }
 
     const BOUND: Bound = Bound::Bounded {
-        max_size: 33,
-        is_fixed_size: true,
+        max_size: 15,
+        is_fixed_size: false,
     };
 }
 
 #[derive(CandidType, Serialize, Deserialize, Debug)]
 pub struct Config {
-    pub confirmation_batch_size: u32,
+    pub confirmation_batch_size: usize,
     pub confirmation_live_time: u32,
     pub da_canisters: HashSet<Principal>,
     pub owner: Principal, // who can change confirmation config

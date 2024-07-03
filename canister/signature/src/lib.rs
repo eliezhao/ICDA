@@ -29,7 +29,7 @@ use rs_merkle::algorithms::Sha256;
 use rs_merkle::MerkleTree;
 
 use crate::confirmation::{
-    BatchConfirmation, BatchInfo, Config, Confirmation, ConfirmationStatus, Proof,
+    BatchConfirmation, BatchIndex, Config, Confirmation, ConfirmationStatus, Proof,
 };
 use crate::signature::{
     mgmt_canister_id, ECDSAPublicKey, ECDSAPublicKeyReply, EcdsaKeyIds, SignWithECDSA,
@@ -52,7 +52,7 @@ thread_local! {
 
     // hex encode digest => batch index
     // "current_index" => current index
-    static INDEX_MAP: RefCell<StableBTreeMap<String, BatchInfo, Memory>> = RefCell::new(StableBTreeMap::init(
+    static INDEX_MAP: RefCell<StableBTreeMap<String, BatchIndex, Memory>> = RefCell::new(StableBTreeMap::init(
         MEMORY_MANAGER.with_borrow(|m| m.get(MemoryId::new(0)))
     ));
 
@@ -60,6 +60,7 @@ thread_local! {
     static BATCH_CONFIRMATION: RefCell<StableBTreeMap<u32, BatchConfirmation, Memory>> = RefCell::new(StableBTreeMap::init(
         MEMORY_MANAGER.with_borrow(|m| m.get(MemoryId::new(1)))
     ));
+
 }
 
 // 获取confirmation
@@ -71,11 +72,8 @@ thread_local! {
 fn get_confirmation(digest: [u8; 32]) -> ConfirmationStatus {
     let hex_digest = hex::encode(digest);
     match INDEX_MAP.with_borrow(|m| m.get(&hex_digest)) {
-        None => return ConfirmationStatus::Invalid,
-        Some(BatchInfo {
-            batch_index,
-            leaf_index,
-        }) => {
+        None => ConfirmationStatus::Invalid,
+        Some(BatchIndex(batch_index)) => {
             let batch_confirmation = BATCH_CONFIRMATION
                 .with_borrow(|m| m.get(&batch_index))
                 .unwrap();
@@ -84,6 +82,12 @@ fn get_confirmation(digest: [u8; 32]) -> ConfirmationStatus {
             }
 
             let merkle_tree = MerkleTree::<Sha256>::from_leaves(&batch_confirmation.nodes);
+
+            let leaf_index = match batch_confirmation.nodes.iter().position(|&x| x == digest) {
+                None => return ConfirmationStatus::Invalid,
+                Some(index) => index,
+            };
+
             let root = merkle_tree.root().unwrap();
             let proof_bytes = merkle_tree.proof(&[leaf_index]).to_bytes();
 
@@ -110,7 +114,7 @@ fn get_confirmation(digest: [u8; 32]) -> ConfirmationStatus {
 // 删除过期的confirmation
 #[update(name = "insert_digest")]
 #[candid_method]
-async fn insert_digest_and_generate_confirmation(digest: [u8; 32]) {
+async fn insert_digest(digest: [u8; 32]) {
     assert!(check_updater(caller()), "only updater can insert digest");
     let hexed_digest = hex::encode(digest);
 
@@ -119,40 +123,38 @@ async fn insert_digest_and_generate_confirmation(digest: [u8; 32]) {
             return;
         }
 
-        // get current index
-        let mut batch_info = m.get(&"current_index".to_string()).unwrap_or_default();
+        let current_batch_index = m.get(&"current_index".to_string()).unwrap_or_default().0;
 
-        // 更新current index
-        // start with 1, leaf index: [1, BATCH_CONFIRMATION_SIZE]
-        batch_info.leaf_index += 1;
-
-        // 获取到的肯定是不满的current index，更新当前的batch index并且插入本key的batch index
-        m.insert(hexed_digest, batch_info.clone());
+        // insert current_index into the map
+        m.insert(hexed_digest, BatchIndex(current_batch_index));
 
         // insert into batch confirmation
         BATCH_CONFIRMATION.with_borrow_mut(|c| {
-            let mut batch_confirmation = c.get(&batch_info.batch_index).unwrap_or_default();
+            let mut batch_confirmation = c.get(&current_batch_index).unwrap_or_default();
             batch_confirmation.nodes.push(digest);
-            c.insert(batch_info.batch_index, batch_confirmation);
+            let current_confirmation_nodes_size = batch_confirmation.nodes.len();
+            c.insert(current_batch_index, batch_confirmation);
+
+            if current_confirmation_nodes_size
+                % CONFIRMATION_CONFIG.with_borrow(|c| c.confirmation_batch_size)
+                == 0
+            {
+                // prune maybe expired confirmation
+                prune_expired_confirmation(current_batch_index);
+
+                // update current batch index
+                m.insert(
+                    "current_index".to_string(),
+                    BatchIndex(
+                        (current_batch_index + 1)
+                            % CONFIRMATION_CONFIG.with_borrow(|c| c.confirmation_live_time),
+                    ),
+                );
+
+                // sign confirmation root
+                spawn(update_signature(current_batch_index));
+            }
         });
-
-        // 判断是否已经满了，sign，并且更新current index
-        if batch_info.leaf_index
-            % CONFIRMATION_CONFIG.with_borrow(|c| c.confirmation_batch_size) as usize
-            == 0
-        {
-            // prune maybe expired confirmation
-            prune_expired_confirmation(batch_info.batch_index);
-
-            // 更新current index
-            let _batch_index = batch_info.batch_index;
-            batch_info.batch_index += 1;
-            batch_info.leaf_index = 0;
-            m.insert("current_index".to_string(), batch_info);
-
-            // sign
-            spawn(update_signature(_batch_index));
-        }
     });
 }
 
@@ -201,6 +203,7 @@ async fn update_signature(batch_index: u32) {
         Ok(SignatureReply { signature_hex }) => {
             confirmation.signature = Some(signature_hex);
             // 更新batch confirmation & insert
+            print("signed confirmation");
             BATCH_CONFIRMATION.with_borrow_mut(|c| c.insert(batch_index, confirmation));
         }
         Err(e) => print(format!("sign failed: {}", e)),
@@ -233,16 +236,15 @@ candid::export_service!();
 #[test]
 fn export_candid() {
     println!("{:#?}", __export_service());
-    assert_eq!(true, false)
 }
 
 fn prune_expired_confirmation(current_batch_index: u32) {
-    if current_batch_index <= CONFIRMATION_CONFIG.with_borrow(|c| c.confirmation_live_time) {
+    let confirmation_live_time = CONFIRMATION_CONFIG.with_borrow(|c| c.confirmation_live_time);
+    if current_batch_index <= confirmation_live_time {
         return;
     }
 
-    let expired_batch_index =
-        current_batch_index - CONFIRMATION_CONFIG.with_borrow(|c| c.confirmation_batch_size);
+    let expired_batch_index = current_batch_index % confirmation_live_time;
     BATCH_CONFIRMATION.with_borrow_mut(|c| {
         let expired_node_keys = c
             .get(&expired_batch_index)

@@ -303,8 +303,8 @@ mod test {
     #[tokio::test]
     async fn test_verify_confirmation() {
         let digest = [
-            18, 90, 240, 20, 215, 92, 13, 209, 227, 120, 60, 244, 105, 121, 229, 242, 116, 225,
-            247, 115, 154, 188, 2, 76, 20, 21, 17, 98, 61, 40, 186, 173,
+            217, 242, 178, 170, 247, 112, 17, 162, 171, 215, 197, 207, 12, 52, 165, 49, 72, 157,
+            46, 173, 38, 188, 132, 142, 43, 170, 68, 208, 233, 83, 19, 236,
         ];
 
         let ics = ICStorage::new("../bin/identity.pem").unwrap();
@@ -314,6 +314,7 @@ mod test {
         // use sc get confirmation of the digest and verify
         let confirmation = sc.get_confirmation(digest).await.unwrap();
 
+        println!("{:?}", confirmation);
         match confirmation {
             ConfirmationStatus::Confirmed(confirmation) => {
                 let res = sc.verify_confirmation(&confirmation).await;

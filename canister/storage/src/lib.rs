@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 
-use candid::{candid_method, export_service, Principal};
-use ic_cdk::caller;
+use candid::{candid_method, Principal};
+use ic_cdk::{caller, spawn};
 use ic_cdk_macros::*;
 use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
 use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap, StableMinHeap};
@@ -121,12 +121,20 @@ async fn save_blob(chunk: BlobChunk) -> Result<(), String> {
             blob::insert_map(m.borrow_mut(), &chunk)
         });
 
-        let _: Result<(), _> = ic_cdk::call(
-            DACONFIG.with_borrow(|c| c.signature_canister),
-            "insert_digest",
-            (chunk.digest,),
-        )
-        .await;
+        spawn(async move {
+            match ic_cdk::call(
+                DACONFIG.with_borrow(|c| c.signature_canister),
+                "insert_digest",
+                (chunk.digest,),
+            )
+            .await
+            {
+                Ok(()) => {}
+                Err(e) => {
+                    ic_cdk::print(format!("save_blob call signature_canister error: {:?}", e));
+                }
+            }
+        })
     }
 
     Ok(())
