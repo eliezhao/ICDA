@@ -7,10 +7,7 @@ use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemor
 use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap, StableMinHeap};
 
 use crate::blob::{Blob, BlobChunk, BlobId};
-use crate::config::Config;
-use crate::time_heap::insert_time_heap;
-
-mod time_heap;
+use crate::config::{Config, CANISTER_THRESHOLD};
 
 mod blob;
 mod config;
@@ -106,8 +103,22 @@ async fn save_blob(chunk: BlobChunk) -> Result<(), String> {
         // 1. insert new blob id into time heap
         // 2. remove expired blob id from time heap
         // 3. if expired blob id exists, return expired key
-        let expired_key =
-            TIMEHEAP.with(|t| insert_time_heap(t.borrow_mut(), chunk.digest, chunk.timestamp));
+        let expired_key = TIMEHEAP.with_borrow_mut(|heap| {
+            let blob_id = BlobId {
+                digest: chunk.digest,
+                timestamp: chunk.timestamp,
+            };
+
+            let _ = heap.push(&blob_id);
+
+            // 删除过期的blob, 返回过期的blob
+            if heap.len() > CANISTER_THRESHOLD as u64 {
+                let expired_item = heap.pop();
+                expired_item
+            } else {
+                None
+            }
+        });
 
         // 1. insert blob share into map
         // 2. if expired blob id exists, remove it from a map

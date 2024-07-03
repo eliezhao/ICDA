@@ -12,7 +12,7 @@ use ic_stable_structures::storable::Bound;
 use ic_stable_structures::{BTreeMap, Storable};
 use serde::Serialize;
 
-use crate::time_heap::CANISTER_THRESHOLD;
+use crate::config::CANISTER_THRESHOLD;
 use crate::Memory;
 
 // 1. 第一次上传，则创建一个空的vec，大小为total
