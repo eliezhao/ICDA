@@ -1,4 +1,4 @@
 identity = "identity.pem"
-batch_number = 5
+batch_number = 12
 mode = { Canister = { } }
 blob_key = "blob_key.json"

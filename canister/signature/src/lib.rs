@@ -63,6 +63,8 @@ thread_local! {
 
 }
 
+const CURRENT_INDEX_KEY: &str = "current_index";
+
 // 获取confirmation
 // - 通过key获取到batch index
 // - 通过batch index获取到BatchConfirmation结构体
@@ -116,46 +118,45 @@ fn get_confirmation(digest: [u8; 32]) -> ConfirmationStatus {
 #[candid_method]
 async fn insert_digest(digest: [u8; 32]) {
     assert!(check_updater(caller()), "only updater can insert digest");
-    let hexed_digest = hex::encode(digest);
+    let digest_hex = hex::encode(digest);
 
-    INDEX_MAP.with_borrow_mut(|m| {
-        if m.contains_key(&hexed_digest) {
+    let mut confirmation_update_info = None;
+
+    INDEX_MAP.with_borrow_mut(|index_map| {
+        if index_map.contains_key(&digest_hex) {
             return;
         }
 
-        let current_batch_index = m.get(&"current_index".to_string()).unwrap_or_default().0;
+        let current_index = index_map
+            .get(&CURRENT_INDEX_KEY.to_string())
+            .unwrap_or_default()
+            .0;
 
-        // insert current_index into the map
-        m.insert(hexed_digest, BatchIndex(current_batch_index));
+        index_map.insert(digest_hex.clone(), BatchIndex(current_index));
 
-        // insert into batch confirmation
-        BATCH_CONFIRMATION.with_borrow_mut(|c| {
-            let mut batch_confirmation = c.get(&current_batch_index).unwrap_or_default();
+        BATCH_CONFIRMATION.with_borrow_mut(|batch_map| {
+            let mut batch_confirmation = batch_map.get(&current_index).unwrap_or_default();
             batch_confirmation.nodes.push(digest);
-            let current_confirmation_nodes_size = batch_confirmation.nodes.len();
-            c.insert(current_batch_index, batch_confirmation);
+            batch_map.insert(current_index, batch_confirmation.clone());
 
-            if current_confirmation_nodes_size
-                % CONFIRMATION_CONFIG.with_borrow(|c| c.confirmation_batch_size)
+            if batch_confirmation.nodes.len()
+                % CONFIRMATION_CONFIG.with_borrow(|config| config.confirmation_batch_size)
                 == 0
             {
-                // prune maybe expired confirmation
-                prune_expired_confirmation(current_batch_index);
+                prune_expired_confirmation(current_index);
 
-                // update current batch index
-                m.insert(
-                    "current_index".to_string(),
-                    BatchIndex(
-                        (current_batch_index + 1)
-                            % CONFIRMATION_CONFIG.with_borrow(|c| c.confirmation_live_time),
-                    ),
-                );
+                let new_current_index = (current_index + 1)
+                    % CONFIRMATION_CONFIG.with_borrow(|config| config.confirmation_live_time);
+                index_map.insert(CURRENT_INDEX_KEY.to_string(), BatchIndex(new_current_index));
 
-                // sign confirmation root
-                spawn(update_signature(current_batch_index));
+                confirmation_update_info = Some((current_index, batch_confirmation));
             }
         });
     });
+
+    if let Some((batch_index, confirmation)) = confirmation_update_info {
+        spawn(update_signature(batch_index, confirmation));
+    }
 }
 
 #[update(name = "public_key")]
@@ -187,9 +188,9 @@ fn update_config(config: Config) {
 // 1. update merkle root
 // 2. sign merkle root([u8;32])
 // 3. update signature
-async fn update_signature(batch_index: u32) {
+async fn update_signature(batch_index: u32, batch_confirmation: BatchConfirmation) {
     // 获取batch confirmation
-    let mut confirmation = BATCH_CONFIRMATION.with_borrow(|c| c.get(&batch_index).unwrap().clone());
+    let mut confirmation = batch_confirmation;
 
     // 构建merkle tree
     let merkle_tree = MerkleTree::<Sha256>::from_leaves(&confirmation.nodes);

@@ -64,9 +64,9 @@ impl SignatureCanister {
     pub async fn public_key(&self) -> Result<Vec<u8>> {
         let raw = self
             .agent
-            .query(&self.canister_id, "public_key")
+            .update(&self.canister_id, "public_key")
             .with_arg(Encode!().unwrap())
-            .call()
+            .call_and_wait()
             .await?;
         let res = Decode!(&raw, core::result::Result<Vec<u8>, String>)?;
 
