@@ -253,7 +253,7 @@ fn prune_expired_confirmation(current_batch_index: u32) {
         return;
     }
 
-    let expired_batch_index = current_batch_index % confirmation_live_time;
+    let expired_batch_index = current_batch_index - confirmation_live_time;
 
     BATCH_CONFIRMATION.with_borrow_mut(|c| {
         let expired_node_keys = c

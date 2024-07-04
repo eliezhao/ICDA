@@ -6,11 +6,13 @@ use ic_cdk_macros::*;
 use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
 use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap, StableMinHeap};
 
-use crate::blob::{Blob, BlobChunk, BlobId};
-use crate::config::{Config, CANISTER_THRESHOLD};
+use crate::blob::{remove_expired_blob_from_map, Blob, BlobChunk};
+use crate::config::Config;
+use crate::time_heap::{insert_to_time_heap, BlobId};
 
 mod blob;
 mod config;
+mod time_heap;
 
 type Memory = VirtualMemory<DefaultMemoryImpl>;
 
@@ -61,7 +63,6 @@ fn get_blob(digest: [u8; 32]) -> Blob {
             }
         }
     });
-
     blob
 }
 
@@ -97,55 +98,23 @@ fn get_blob_with_index(digest: [u8; 32], index: usize) -> Blob {
 async fn save_blob(chunk: BlobChunk) -> Result<(), String> {
     assert!(check_caller(caller()), "only owner can save blob");
 
-    if blob_exist(chunk.digest) {
-        BLOBS.with(|m| blob::insert_map(m.borrow_mut(), &chunk));
+    let hexed_digest = hex::encode(chunk.digest);
+
+    if blob_exist(&hexed_digest) {
+        blob::insert_to_store_map(hexed_digest, chunk.total, &chunk.data);
     } else {
-        // 1. insert new blob id into time heap
-        // 2. remove expired blob id from time heap
-        // 3. if expired blob id exists, return expired key
-        let expired_key = TIMEHEAP.with_borrow_mut(|heap| {
-            let blob_id = BlobId {
-                digest: chunk.digest,
-                timestamp: chunk.timestamp,
-            };
+        // 1. insert blob share into the map
+        blob::insert_to_store_map(hexed_digest, chunk.total, &chunk.data);
 
-            let _ = heap.push(&blob_id);
-
-            // 删除过期的blob, 返回过期的blob
-            if heap.len() > CANISTER_THRESHOLD as u64 {
-                let expired_item = heap.pop();
-                expired_item
-            } else {
-                None
-            }
-        });
-
-        // 1. insert blob share into map
         // 2. if expired blob id exists, remove it from a map
-        BLOBS.with(|m| {
-            // remove expired blob
-            if let Some(expired_blob) = expired_key {
-                let hex_digest = hex::encode(expired_blob.digest);
-                m.borrow_mut().remove(&hex_digest);
-            }
+        // remove expired blob
+        let expired_key = insert_to_time_heap(chunk.digest, chunk.timestamp);
+        if let Some(expired_blob) = expired_key {
+            remove_expired_blob_from_map(expired_blob.digest)
+        }
 
-            blob::insert_map(m.borrow_mut(), &chunk)
-        });
-
-        spawn(async move {
-            match ic_cdk::call(
-                DACONFIG.with_borrow(|c| c.signature_canister),
-                "insert_digest",
-                (chunk.digest,),
-            )
-            .await
-            {
-                Ok(()) => {}
-                Err(e) => {
-                    ic_cdk::print(format!("save_blob call signature_canister error: {:?}", e));
-                }
-            }
-        })
+        // 3. notify signature canister to generate confirmation
+        spawn(notify_generate_confirmation(chunk.digest));
     }
 
     Ok(())
@@ -154,12 +123,18 @@ async fn save_blob(chunk: BlobChunk) -> Result<(), String> {
 #[update(name = "notify_generate_confirmation")]
 #[candid_method]
 async fn notify_generate_confirmation(digest: [u8; 32]) {
-    let _: Result<(), _> = ic_cdk::call(
+    match ic_cdk::call(
         DACONFIG.with_borrow(|c| c.signature_canister),
         "insert_digest",
         (digest,),
     )
-    .await;
+    .await
+    {
+        Ok(()) => {}
+        Err(e) => {
+            ic_cdk::print(format!("save_blob call signature_canister error: {:?}", e));
+        }
+    }
 }
 
 #[update(name = "update_config")]
@@ -174,8 +149,7 @@ fn check_caller(c: Principal) -> bool {
     c.eq(&DACONFIG.with_borrow(|c| c.owner))
 }
 
-fn blob_exist(digest: [u8; 32]) -> bool {
-    let hexed_digest = hex::encode(digest);
+fn blob_exist(hexed_digest: &String) -> bool {
     BLOBS.with(|m| m.borrow().contains_key(&hexed_digest))
 }
 

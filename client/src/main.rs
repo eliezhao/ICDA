@@ -17,8 +17,7 @@ use serde_json::json;
 use tokio::fs;
 use tokio::fs::OpenOptions;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tracing::{error, info, Level, warn};
-use tracing_subscriber::fmt;
+use tracing::{error, info, warn, Level};
 
 use client::canister_interface::{
     BlobKey, ICStorage, CANISTER_COLLECTIONS, CONFIRMATION_BATCH_SIZE, CONFIRMATION_LIVE_TIME,
@@ -59,7 +58,7 @@ enum Mode {
 enum Action {
     Put,
     Get,
-    Verify
+    Verify,
 }
 
 #[tokio::main]
@@ -201,7 +200,6 @@ async fn put_to_canister(batch_number: usize, key_path: String, da: &mut ICStora
     file.write_all(json_str.as_bytes())
         .await
         .expect("Unable to write file");
-
 
     info!("Write key to file success");
     Ok(())
