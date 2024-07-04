@@ -17,7 +17,8 @@ use serde_json::json;
 use tokio::fs;
 use tokio::fs::OpenOptions;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tracing::{info, Level};
+use tracing::{error, info, Level, warn};
+use tracing_subscriber::fmt;
 
 use client::canister_interface::{
     BlobKey, ICStorage, CANISTER_COLLECTIONS, CONFIRMATION_BATCH_SIZE, CONFIRMATION_LIVE_TIME,
@@ -58,6 +59,7 @@ enum Mode {
 enum Action {
     Put,
     Get,
+    Verify
 }
 
 #[tokio::main]
@@ -138,6 +140,9 @@ async fn talk_to_canister(
         Action::Get => {
             let _ = get_from_canister(key_path, &da).await;
         }
+        Action::Verify => {
+            let _ = verify_confirmation(key_path).await;
+        }
     }
 }
 
@@ -182,7 +187,7 @@ async fn put_to_canister(batch_number: usize, key_path: String, da: &mut ICStora
     }
 
     let json_value = json!(response);
-    let json_str = serde_json::to_string(&json_value).unwrap();
+    let json_str = serde_json::to_string_pretty(&json_value).unwrap();
 
     let mut file = OpenOptions::new()
         .write(true)
@@ -196,6 +201,8 @@ async fn put_to_canister(batch_number: usize, key_path: String, da: &mut ICStora
     file.write_all(json_str.as_bytes())
         .await
         .expect("Unable to write file");
+
+
     info!("Write key to file success");
     Ok(())
 }
@@ -224,16 +231,16 @@ async fn verify_confirmation(key_path: String) -> Result<()> {
         match confirmation {
             ConfirmationStatus::Confirmed(confirmation) => {
                 if sc.verify_confirmation(&confirmation).await {
-                    println!("confirmation verified, digest: {}", hex::encode(key.digest));
+                    info!("confirmation verified, digest: {}", hex::encode(key.digest));
                 } else {
-                    println!("confirmation invalid, digest: {}", hex::encode(key.digest));
+                    warn!("confirmation invalid, digest: {}", hex::encode(key.digest));
                 }
             }
             ConfirmationStatus::Pending => {
-                println!("confirmation is pending")
+                warn!("confirmation is pending")
             }
             ConfirmationStatus::Invalid => {
-                println!("digest is invalid")
+                error!("digest is invalid")
             }
         }
     }
