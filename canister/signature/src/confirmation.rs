@@ -14,15 +14,13 @@ use ic_stable_structures::storable::Bound;
 use ic_stable_structures::Storable;
 use serde::Serialize;
 
-use crate::CONFIRMATION_CONFIG;
+const REPLICA_NUM: usize = 2; // 1 blob, 2 canister replicas
 
-const REPLICA_NUM: usize = 2;
-
-const COLLECTION_SIZE: usize = 20;
+const COLLECTION_SIZE: usize = 20; // current subnets number, 20 subnets and 40 canisters
 const CANISTER_COLLECTIONS: [[&str; REPLICA_NUM]; COLLECTION_SIZE] =
     [["hxctj-oiaaa-aaaap-qhltq-cai", "v3y75-6iaaa-aaaak-qikaa-cai"]; COLLECTION_SIZE];
-const CONFIRMATION_BATCH_SIZE: usize = 12;
-pub const CONFIRMATION_LIVE_TIME: u32 = 12 * 60 * 24 * 7 + 1; // 1/12 * 1 week in secs
+const CONFIRMATION_BATCH_SIZE: usize = 12; // current size of the batch
+pub const CONFIRMATION_LIVE_TIME: u32 = 120961; // 1/12 * 1 week in secs = 12 * 60 * 24 * 7 + 1
 
 #[derive(CandidType, Deserialize, Serialize, Clone)]
 pub enum ConfirmationStatus {
@@ -62,7 +60,7 @@ impl Storable for BatchConfirmation {
     }
 
     const BOUND: Bound = Bound::Bounded {
-        max_size: 1 << 10, // 1024 bytes > 实际使用(64 bytes signature + 12 * 32 bytes nodes) + candid = 530 bytes
+        max_size: 1024, // 1024 bytes > 实际使用(64 bytes signature + 12 * 32 bytes nodes) + candid = 530 bytes
         is_fixed_size: false,
     };
 }
@@ -72,15 +70,13 @@ impl Default for BatchConfirmation {
         Self {
             signature: None,
             root: [0x00u8; 32],
-            nodes: Vec::with_capacity(
-                CONFIRMATION_CONFIG.with_borrow(|s| s.confirmation_batch_size),
-            ),
+            nodes: Vec::with_capacity(CONFIRMATION_BATCH_SIZE),
         }
     }
 }
 
 #[derive(CandidType, Deserialize, Serialize, Clone, Default)]
-pub(crate) struct BatchIndex(pub u32);
+pub(crate) struct BatchIndex(pub u32); // u32 => 136 years, 1 block / second
 
 impl Storable for BatchIndex {
     fn to_bytes(&self) -> Cow<[u8]> {

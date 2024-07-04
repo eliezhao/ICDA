@@ -1,6 +1,6 @@
 //! Eigen DA gRPC server(mock) implementation.
 //!
-//! cargo run -p da_server -- s3 --profile profile-abc --bucket bucket-xyz
+//! Cargo run -p da_server -- s3 --profile profile-abc --bucket bucket-xyz
 //! cargo run -p da_server -- local --db-path /tmp/da_server.db
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::num::NonZeroU32;
@@ -12,8 +12,6 @@ use anyhow::Result;
 use async_trait::async_trait;
 use clap::{ArgAction, Parser, Subcommand};
 use governor::{Quota, RateLimiter};
-use tonic::transport::Server;
-
 use server::disperser::disperser_server::{Disperser, DisperserServer};
 use server::disperser::{
     AuthenticatedReply, AuthenticatedRequest, BatchHeader, BatchMetadata, BlobHeader, BlobInfo,
@@ -21,6 +19,7 @@ use server::disperser::{
     DisperseBlobRequest, G1Commitment, RetrieveBlobReply, RetrieveBlobRequest,
 };
 use server::upload::{ICStorage, LocalStorage, S3Storage, Storage};
+use tonic::transport::Server;
 
 #[derive(Debug, Parser)]
 struct Cli {
@@ -78,7 +77,7 @@ pub struct S3 {
     bucket: String,
 }
 
-/// Params for using local database for persistence.
+/// Params for using a local database for persistence.
 #[derive(Debug, Parser)]
 pub struct Local {
     #[arg(long)]

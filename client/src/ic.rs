@@ -44,7 +44,7 @@ impl LedgerAgent {
         Ok(Decode!(&res, Nat)?)
     }
 
-    /// Transfers amount of tokens from the account (caller, from_subaccount) to the account (to_principal, to_subaccount).
+    /// Transfers number of tokens from the account (caller, from_subaccount) to the account (to_principal, to_subaccount).
     pub async fn transfer(&self, args: TransferArgs) -> anyhow::Result<u64> {
         println!("begin transfer");
         let res = self
@@ -138,7 +138,7 @@ pub async fn create_canister_in_specific_subnet(
     );
 
     // notify cmc to create canister
-    let arg = cycles_minting_canister::NotifyCreateCanister {
+    let arg = NotifyCreateCanister {
         block_index,
         controller: pid,
         subnet_type: None,

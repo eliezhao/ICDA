@@ -21,7 +21,7 @@ pub(crate) struct BlobId {
 }
 
 impl BlobId {
-    /// Creates the blob Id for the blob.
+    /// Creates the blob id for the blob.
     fn new(blob: &[u8]) -> Self {
         Self {
             digest: sha2::Sha256::digest(blob).into(),

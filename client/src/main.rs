@@ -4,33 +4,29 @@
 
 extern crate core;
 
-use std::collections::{HashMap, HashSet};
-use std::io::Write;
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use anyhow::Result;
-use candid::pretty::utils::ident;
-use candid::{CandidType, Deserialize, Principal};
-use clap::{Parser, Subcommand, ValueEnum};
+use candid::Principal;
+use clap::{Parser, ValueEnum};
 use ic_agent::identity::BasicIdentity;
 use ic_agent::Agent;
 use rand::Rng;
 use serde_json::json;
-use sha2::Digest;
 use tokio::fs;
 use tokio::fs::OpenOptions;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tracing::{info, Level};
-use tracing_subscriber::fmt;
 
 use client::canister_interface::{
-    BlobKey, ICStorage, BLOB_LIVE_TIME, CANISTER_COLLECTIONS, CONFIRMATION_BATCH_SIZE,
-    CONFIRMATION_LIVE_TIME, SIGNATURE_CANISTER,
+    BlobKey, ICStorage, CANISTER_COLLECTIONS, CONFIRMATION_BATCH_SIZE, CONFIRMATION_LIVE_TIME,
+    SIGNATURE_CANISTER,
 };
 use client::signature;
 use client::signature::{ConfirmationStatus, SignatureCanister};
-use client::storage::{RoutingInfo, StorageCanister};
 
+#[warn(dead_code)]
 const E8S: u64 = 100_000_000;
 
 #[derive(Parser)]
@@ -245,7 +241,7 @@ async fn verify_confirmation(key_path: String) -> Result<()> {
     Ok(())
 }
 
-async fn talk_to_server(ip: String) {}
+async fn talk_to_server(_ip: String) {}
 
 #[tokio::test]
 async fn test() {

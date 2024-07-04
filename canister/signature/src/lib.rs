@@ -60,7 +60,6 @@ thread_local! {
     static BATCH_CONFIRMATION: RefCell<StableBTreeMap<u32, BatchConfirmation, Memory>> = RefCell::new(StableBTreeMap::init(
         MEMORY_MANAGER.with_borrow(|m| m.get(MemoryId::new(1)))
     ));
-
 }
 
 const CURRENT_INDEX_KEY: &str = "current_index";
@@ -90,7 +89,7 @@ fn get_confirmation(digest: [u8; 32]) -> ConfirmationStatus {
                 Some(index) => index,
             };
 
-            let root = merkle_tree.root().unwrap();
+            let root = batch_confirmation.root;
             let proof_bytes = merkle_tree.proof(&[leaf_index]).to_bytes();
 
             let proof = Proof {
@@ -122,22 +121,27 @@ async fn insert_digest(digest: [u8; 32]) {
 
     let mut confirmation_update_info = None;
 
-    INDEX_MAP.with_borrow_mut(|index_map| {
-        if index_map.contains_key(&digest_hex) {
+    INDEX_MAP.with(|index_map| {
+        if index_map.borrow().contains_key(&digest_hex) {
             return;
         }
 
         let current_index = index_map
+            .borrow()
             .get(&CURRENT_INDEX_KEY.to_string())
             .unwrap_or_default()
             .0;
 
-        index_map.insert(digest_hex.clone(), BatchIndex(current_index));
+        index_map
+            .borrow_mut()
+            .insert(digest_hex.clone(), BatchIndex(current_index));
 
-        BATCH_CONFIRMATION.with_borrow_mut(|batch_map| {
-            let mut batch_confirmation = batch_map.get(&current_index).unwrap_or_default();
+        BATCH_CONFIRMATION.with(|batch_map| {
+            let mut batch_confirmation = batch_map.borrow().get(&current_index).unwrap_or_default();
             batch_confirmation.nodes.push(digest);
-            batch_map.insert(current_index, batch_confirmation.clone());
+            batch_map
+                .borrow_mut()
+                .insert(current_index, batch_confirmation.clone());
 
             if batch_confirmation.nodes.len()
                 % CONFIRMATION_CONFIG.with_borrow(|config| config.confirmation_batch_size)
@@ -145,9 +149,10 @@ async fn insert_digest(digest: [u8; 32]) {
             {
                 prune_expired_confirmation(current_index);
 
-                let new_current_index = (current_index + 1)
-                    % CONFIRMATION_CONFIG.with_borrow(|config| config.confirmation_live_time);
-                index_map.insert(CURRENT_INDEX_KEY.to_string(), BatchIndex(new_current_index));
+                let new_current_index = current_index + 1;
+                index_map
+                    .borrow_mut()
+                    .insert(CURRENT_INDEX_KEY.to_string(), BatchIndex(new_current_index));
 
                 confirmation_update_info = Some((current_index, batch_confirmation));
             }
@@ -223,7 +228,9 @@ async fn sign(hash: Vec<u8>) -> Result<SignatureReply, String> {
         mgmt_canister_id(),
         "sign_with_ecdsa",
         (request,),
-        25_000_000_000,
+        // more than 26_153_846_153,
+        // which specified in :https://internetcomputer.org/docs/current/references/t-ecdsa-how-it-works/#api
+        27_000_000_000,
     )
     .await
     .map_err(|e| format!("sign_with_ecdsa failed {}", e.1))?;
@@ -241,11 +248,13 @@ fn export_candid() {
 
 fn prune_expired_confirmation(current_batch_index: u32) {
     let confirmation_live_time = CONFIRMATION_CONFIG.with_borrow(|c| c.confirmation_live_time);
+
     if current_batch_index <= confirmation_live_time {
         return;
     }
 
     let expired_batch_index = current_batch_index % confirmation_live_time;
+
     BATCH_CONFIRMATION.with_borrow_mut(|c| {
         let expired_node_keys = c
             .get(&expired_batch_index)
