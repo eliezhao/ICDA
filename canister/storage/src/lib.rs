@@ -123,6 +123,10 @@ async fn save_blob(chunk: BlobChunk) -> Result<(), String> {
 #[update(name = "notify_generate_confirmation")]
 #[candid_method]
 async fn notify_generate_confirmation(digest: [u8; 32]) {
+    if !BLOBS.with_borrow(|b| b.contains_key(&hex::encode(digest))) {
+        return;
+    }
+
     match ic_cdk::call(
         DACONFIG.with_borrow(|c| c.signature_canister),
         "insert_digest",

@@ -89,41 +89,6 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn init_signature_canister(pem_path: String) -> Result<()> {
-    let identity = BasicIdentity::from_pem_file(pem_path)?;
-    let agent = Agent::builder()
-        .with_url("https://ic0.app")
-        .with_identity(identity)
-        .build()
-        .unwrap();
-    let owner = agent.get_principal().unwrap();
-    let da_canisters = HashSet::from_iter(
-        CANISTER_COLLECTIONS
-            .iter()
-            .map(|x| {
-                x.iter()
-                    .map(|x| Principal::from_text(x).unwrap())
-                    .collect::<Vec<Principal>>()
-            })
-            .collect::<Vec<_>>()
-            .concat(),
-    );
-    let confirmation_live_time = CONFIRMATION_LIVE_TIME;
-    let confirmation_batch_size = CONFIRMATION_BATCH_SIZE;
-    let config = signature::Config {
-        owner,
-        da_canisters,
-        confirmation_live_time,
-        confirmation_batch_size,
-    };
-
-    let signature_canister_id = Principal::from_text(SIGNATURE_CANISTER).unwrap();
-    let signature_canister = SignatureCanister::new(signature_canister_id, Arc::new(agent));
-    signature_canister.update_config(&config).await?;
-
-    Ok(())
-}
-
 async fn talk_to_canister(
     identity_path: String,
     batch_number: usize,
@@ -145,7 +110,7 @@ async fn talk_to_canister(
     }
 }
 
-async fn get_from_canister(key_path: String, da: &ICStorage) -> Result<()> {
+pub async fn get_from_canister(key_path: String, da: &ICStorage) -> Result<()> {
     let mut file = OpenOptions::new()
         .read(true)
         .open(key_path)
@@ -166,7 +131,11 @@ async fn get_from_canister(key_path: String, da: &ICStorage) -> Result<()> {
     Ok(())
 }
 
-async fn put_to_canister(batch_number: usize, key_path: String, da: &mut ICStorage) -> Result<()> {
+pub async fn put_to_canister(
+    batch_number: usize,
+    key_path: String,
+    da: &mut ICStorage,
+) -> Result<()> {
     let mut rng = rand::thread_rng();
 
     //准备4个blob
@@ -205,7 +174,7 @@ async fn put_to_canister(batch_number: usize, key_path: String, da: &mut ICStora
     Ok(())
 }
 
-async fn verify_confirmation(key_path: String) -> Result<()> {
+pub async fn verify_confirmation(key_path: String) -> Result<()> {
     let mut file = OpenOptions::new()
         .read(true)
         .open(key_path)
@@ -242,6 +211,41 @@ async fn verify_confirmation(key_path: String) -> Result<()> {
             }
         }
     }
+
+    Ok(())
+}
+
+async fn init_signature_canister(pem_path: String) -> Result<()> {
+    let identity = BasicIdentity::from_pem_file(pem_path)?;
+    let agent = Agent::builder()
+        .with_url("https://ic0.app")
+        .with_identity(identity)
+        .build()
+        .unwrap();
+    let owner = agent.get_principal().unwrap();
+    let da_canisters = HashSet::from_iter(
+        CANISTER_COLLECTIONS
+            .iter()
+            .map(|x| {
+                x.iter()
+                    .map(|x| Principal::from_text(x).unwrap())
+                    .collect::<Vec<Principal>>()
+            })
+            .collect::<Vec<_>>()
+            .concat(),
+    );
+    let confirmation_live_time = CONFIRMATION_LIVE_TIME;
+    let confirmation_batch_size = CONFIRMATION_BATCH_SIZE;
+    let config = signature::Config {
+        owner,
+        da_canisters,
+        confirmation_live_time,
+        confirmation_batch_size,
+    };
+
+    let signature_canister_id = Principal::from_text(SIGNATURE_CANISTER).unwrap();
+    let signature_canister = SignatureCanister::new(signature_canister_id, Arc::new(agent));
+    signature_canister.update_config(&config).await?;
 
     Ok(())
 }

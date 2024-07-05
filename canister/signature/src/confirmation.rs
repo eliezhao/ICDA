@@ -15,12 +15,12 @@ use ic_stable_structures::Storable;
 use serde::Serialize;
 
 const REPLICA_NUM: usize = 2; // 1 blob, 2 canister replicas
-
 const COLLECTION_SIZE: usize = 20; // current subnets number, 20 subnets and 40 canisters
+
+const CONFIRMATION_BATCH_SIZE: usize = 12; // current size of the batch
+const CONFIRMATION_LIVE_TIME: u32 = 120961; // 1/12 * 1 week in secs = 12 * 60 * 24 * 7 + 1
 const CANISTER_COLLECTIONS: [[&str; REPLICA_NUM]; COLLECTION_SIZE] =
     [["hxctj-oiaaa-aaaap-qhltq-cai", "v3y75-6iaaa-aaaak-qikaa-cai"]; COLLECTION_SIZE];
-const CONFIRMATION_BATCH_SIZE: usize = 12; // current size of the batch
-pub const CONFIRMATION_LIVE_TIME: u32 = 120961; // 1/12 * 1 week in secs = 12 * 60 * 24 * 7 + 1
 
 #[derive(CandidType, Deserialize, Serialize, Clone)]
 pub enum ConfirmationStatus {

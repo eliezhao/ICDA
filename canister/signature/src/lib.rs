@@ -204,6 +204,12 @@ fn init() {
     // init public key
 }
 
+candid::export_service!();
+#[test]
+fn export_candid() {
+    println!("{:#?}", __export_service());
+}
+
 // 1. update merkle root
 // 2. sign merkle root([u8;32])
 // 3. update signature
@@ -252,12 +258,6 @@ async fn sign(hash: Vec<u8>) -> Result<SignatureReply, String> {
     Ok(SignatureReply {
         signature_hex: hex::encode(response.signature),
     })
-}
-
-candid::export_service!();
-#[test]
-fn export_candid() {
-    println!("{:#?}", __export_service());
 }
 
 fn prune_expired_confirmation(current_batch_index: u32) {
