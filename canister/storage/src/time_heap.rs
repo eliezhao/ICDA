@@ -6,13 +6,12 @@ use ic_stable_structures::storable::Bound;
 use ic_stable_structures::Storable;
 use serde::Serialize;
 
-use crate::config::CANISTER_THRESHOLD;
-use crate::TIMEHEAP;
+use crate::{DACONFIG, TIMEHEAP};
 
 #[derive(CandidType, Serialize, Deserialize, Debug, Clone)]
 pub struct BlobId {
     /// Sha256 digest of the blob in hex format.
-    pub digest: [u8; 32], // hex encoded digest
+    pub digest: [u8; 32],
 
     /// Time since epoch in nanos.
     pub timestamp: u128,
@@ -48,7 +47,7 @@ impl Storable for BlobId {
     }
 
     const BOUND: Bound = Bound::Bounded {
-        max_size: CANISTER_THRESHOLD,
+        max_size: 100,
         is_fixed_size: false,
     };
 }
@@ -63,7 +62,7 @@ pub fn insert_to_time_heap(digest: [u8; 32], timestamp: u128) -> Option<BlobId> 
         let _ = heap.push(&blob_id);
 
         // 删除过期的blob, 返回过期的blob
-        if heap.len() > CANISTER_THRESHOLD as u64 {
+        if heap.len() > DACONFIG.with_borrow(|c| c.canister_storage_threshold) as u64 {
             let expired_item = heap.pop();
             expired_item
         } else {

@@ -13,7 +13,7 @@ use crate::BLOBS;
 #[derive(Deserialize, Serialize, CandidType, Debug, Clone)]
 pub struct BlobChunk {
     /// Sha256 digest of the blob in hex format.
-    pub digest: [u8; 32], // hex encoded digest
+    pub digest: [u8; 32],
 
     /// Time since epoch in nanos.
     pub timestamp: u128,

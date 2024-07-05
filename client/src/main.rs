@@ -247,8 +247,3 @@ async fn verify_confirmation(key_path: String) -> Result<()> {
 }
 
 async fn talk_to_server(_ip: String) {}
-
-#[tokio::test]
-async fn test() {
-    let _ = verify_confirmation("../bin/blob_key.".to_string()).await;
-}

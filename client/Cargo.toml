@@ -5,6 +5,10 @@ edition.workspace = true
 repository.workspace = true
 rust-version.workspace = true
 
+[[test]]
+name = "test"
+path = "test/test.rs"
+
 [dependencies]
 ic-agent = { workspace = true }
 candid = { workspace = true }

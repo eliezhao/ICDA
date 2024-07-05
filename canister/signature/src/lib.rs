@@ -60,6 +60,8 @@ thread_local! {
     static BATCH_CONFIRMATION: RefCell<StableBTreeMap<u32, BatchConfirmation, Memory>> = RefCell::new(StableBTreeMap::init(
         MEMORY_MANAGER.with_borrow(|m| m.get(MemoryId::new(1)))
     ));
+
+    static PUBLIC_KEY: RefCell<Vec<u8>> = RefCell::new(Vec::new());
 }
 
 const CURRENT_INDEX_KEY: &str = "current_index";
@@ -182,12 +184,24 @@ pub async fn public_key() -> Result<Vec<u8>, String> {
 }
 
 #[update(name = "update_config")]
+#[candid_method]
 fn update_config(config: Config) {
     assert!(
         check_owner(caller()),
         "only owner can update signature batch size"
     );
     CONFIRMATION_CONFIG.with_borrow_mut(|c| *c = config);
+}
+
+#[update(name = "init")]
+#[candid_method]
+fn init() {
+    assert!(
+        check_owner(caller()),
+        "only owner can update signature batch size"
+    );
+
+    // init public key
 }
 
 // 1. update merkle root

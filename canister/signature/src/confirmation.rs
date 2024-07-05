@@ -60,7 +60,9 @@ impl Storable for BatchConfirmation {
     }
 
     const BOUND: Bound = Bound::Bounded {
-        max_size: 1024, // 1024 bytes > 实际使用(64 bytes signature + 12 * 32 bytes nodes) + candid = 530 bytes
+        // 1024 bytes > 实际使用(64 bytes signature + 12 * 32 bytes nodes) + candid = 530 bytes,
+        // encoded => 594
+        max_size: 1024,
         is_fixed_size: false,
     };
 }
