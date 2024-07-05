@@ -32,7 +32,7 @@ pub enum ConfirmationStatus {
 }
 
 #[derive(CandidType, Serialize, Deserialize, Debug)]
-pub struct Config {
+pub struct SignatureCanisterConfig {
     pub confirmation_batch_size: u32,
     pub confirmation_live_time: u32,
     pub da_canisters: HashSet<Principal>,
@@ -50,7 +50,7 @@ impl SignatureCanister {
         Self { canister_id, agent }
     }
 
-    pub async fn update_config(&self, config: &Config) -> Result<()> {
+    pub async fn update_config(&self, config: &SignatureCanisterConfig) -> Result<()> {
         let arg = Encode!(config).unwrap();
         let _ = self
             .agent
@@ -64,17 +64,17 @@ impl SignatureCanister {
     pub async fn public_key(&self) -> Result<Vec<u8>> {
         let raw = self
             .agent
-            .update(&self.canister_id, "public_key")
+            .query(&self.canister_id, "get_public_key")
             .with_arg(Encode!().unwrap())
-            .call_and_wait()
+            .call()
             .await?;
-        let res = Decode!(&raw, core::result::Result<Vec<u8>, String>)?;
+        let res = Decode!(&raw, Vec<u8>)?;
 
-        if let Err(e) = res {
-            return Err(anyhow!(e));
+        if res.is_empty() {
+            return Err(anyhow!("public key is not init"));
         }
 
-        Ok(res.unwrap())
+        Ok(res)
     }
 
     pub async fn get_confirmation(&self, digest: [u8; 32]) -> Result<ConfirmationStatus> {

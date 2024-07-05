@@ -21,7 +21,7 @@
 use std::cell::RefCell;
 
 use candid::{candid_method, Principal};
-use ic_cdk::{caller, print, spawn};
+use ic_cdk::{caller, init, print, spawn};
 use ic_cdk_macros::{query, update};
 use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
 use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap};
@@ -111,6 +111,12 @@ fn get_confirmation(digest: [u8; 32]) -> ConfirmationStatus {
     }
 }
 
+#[query(name = "get_public_key")]
+#[candid_method]
+fn public_key() -> Vec<u8> {
+    PUBLIC_KEY.with(|k| k.borrow().clone())
+}
+
 // 更新本地的digest
 // digest: hex encoded digest
 // 最后如果判断需要签名，就签名
@@ -166,23 +172,6 @@ async fn insert_digest(digest: [u8; 32]) {
     }
 }
 
-#[update(name = "public_key")]
-#[candid_method]
-pub async fn public_key() -> Result<Vec<u8>, String> {
-    let request = ECDSAPublicKey {
-        canister_id: None,
-        derivation_path: vec![],
-        key_id: EcdsaKeyIds::ProductionKey1.to_key_id(),
-    };
-
-    let (res,): (ECDSAPublicKeyReply,) =
-        ic_cdk::call(mgmt_canister_id(), "ecdsa_public_key", (request,))
-            .await
-            .map_err(|e| format!("ecdsa_public_key failed {}", e.1))?;
-
-    Ok(res.public_key)
-}
-
 #[update(name = "update_config")]
 #[candid_method]
 fn update_config(config: Config) {
@@ -196,18 +185,36 @@ fn update_config(config: Config) {
 #[update(name = "init")]
 #[candid_method]
 fn init() {
-    assert!(
-        check_owner(caller()),
-        "only owner can update signature batch size"
-    );
-
     // init public key
+    spawn(async {
+        match init_public_key().await {
+            Ok(key) => {
+                PUBLIC_KEY.with_borrow_mut(|k| *k = key);
+            }
+            Err(e) => print(format!("get public key failed: {}", e)),
+        }
+    });
 }
 
 candid::export_service!();
 #[test]
 fn export_candid() {
     println!("{:#?}", __export_service());
+}
+
+pub async fn init_public_key() -> Result<Vec<u8>, String> {
+    let request = ECDSAPublicKey {
+        canister_id: None,
+        derivation_path: vec![],
+        key_id: EcdsaKeyIds::ProductionKey1.to_key_id(),
+    };
+
+    let (res,): (ECDSAPublicKeyReply,) =
+        ic_cdk::call(mgmt_canister_id(), "ecdsa_public_key", (request,))
+            .await
+            .map_err(|e| format!("ecdsa_public_key failed {}", e.1))?;
+
+    Ok(res.public_key)
 }
 
 // 1. update merkle root

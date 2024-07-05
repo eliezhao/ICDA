@@ -6,8 +6,6 @@ use candid::{CandidType, Decode, Deserialize, Encode, Principal};
 use ic_agent::Agent;
 use serde::Serialize;
 
-use crate::signature::Config;
-
 const CHUNK_SIZE: usize = 1 << 20; // 1 MB
 
 #[derive(Deserialize, Serialize, CandidType, Debug, Clone)]
@@ -85,6 +83,14 @@ pub struct Blob {
     pub next: Option<u64>, // next start index
 }
 
+#[derive(Deserialize, Serialize, CandidType, Clone)]
+pub struct StorageCanisterConfig {
+    pub owner: Principal, // who can upload to da canister
+    pub signature_canister: Principal,
+    pub query_response_size: usize,
+    pub canister_storage_threshold: u32,
+}
+
 #[derive(Clone)]
 pub struct StorageCanister {
     agent: Arc<Agent>,
@@ -128,7 +134,7 @@ impl StorageCanister {
         Ok(())
     }
 
-    pub async fn update_config(&self, config: Config) -> anyhow::Result<()> {
+    pub async fn update_config(&self, config: &StorageCanisterConfig) -> anyhow::Result<()> {
         let arg = Encode!(&config)?;
         let _ = self.update_call("update_config", arg).await?;
         Ok(())
