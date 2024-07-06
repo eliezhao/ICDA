@@ -15,11 +15,11 @@ type Proof = record {
   leaf_index : nat64;
   proof_bytes : blob;
 };
-service : () -> {
+service : {
   get_confirmation : (blob) -> (ConfirmationStatus);
   get_public_key : () -> (blob) query;
+  init : () -> ();
   insert_digest : (blob) -> ();
   public_key : () -> (blob);
   update_config : (Config) -> ();
-  init : () -> ();
 }

@@ -9,6 +9,7 @@ type Config = record {
   owner : principal;
   signature_canister : principal;
   query_response_size : nat64;
+  canister_storage_threshold : nat32;
 };
 type Result = variant { Ok; Err : text };
 service : {

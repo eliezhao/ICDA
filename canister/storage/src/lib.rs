@@ -149,17 +149,16 @@ fn update_config(config: Config) {
     DACONFIG.with_borrow_mut(|c| *c = config);
 }
 
+candid::export_service!();
+#[test]
+fn export_candid() {
+    println!("{:#?}", __export_service());
+}
+
 fn check_caller(c: Principal) -> bool {
     c.eq(&DACONFIG.with_borrow(|c| c.owner))
 }
 
 fn blob_exist(hexed_digest: &String) -> bool {
     BLOBS.with(|m| m.borrow().contains_key(&hexed_digest))
-}
-
-candid::export_service!();
-#[test]
-fn export_candid() {
-    println!("{:#?}", __export_service());
-    assert_eq!(true, false)
 }

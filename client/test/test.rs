@@ -18,7 +18,7 @@ use client::{get_from_canister, put_to_canister, verify_confirmation};
 
 #[tokio::main]
 async fn main() {
-    let key_path = "test/blob_key.json";
+    let key_path = "client/test/blob_key.json";
     let identity_path = "identity/identity.pem";
 
     // basic setup
