@@ -52,6 +52,9 @@ pub fn insert_to_store_map(hexed_digest: String, total_size: usize, data: &Vec<u
 pub fn remove_expired_blob_from_map(digest: [u8; 32]) {
     BLOBS.with(|map| {
         let hex_digest = hex::encode(digest);
-        let _ = map.borrow_mut().remove(&hex_digest);
+        let v = map.borrow_mut().remove(&hex_digest);
+        if v.is_some() {
+            print(format!("remove expired blob of digest: {}", hex_digest));
+        }
     })
 }

@@ -9,19 +9,19 @@ use std::sync::Arc;
 use candid::Principal;
 use ic_agent::identity::BasicIdentity;
 use ic_agent::Agent;
+use tokio::fs::{read_to_string, OpenOptions};
+use tokio::io::AsyncReadExt;
 use tokio::join;
 
 use client::canister_interface::{BlobKey, ICStorage, CANISTER_COLLECTIONS, SIGNATURE_CANISTER};
-use client::signature::{SignatureCanister, SignatureCanisterConfig};
+use client::signature::{ConfirmationStatus, SignatureCanister, SignatureCanisterConfig};
 use client::storage::{StorageCanister, StorageCanisterConfig};
-use client::{get_from_canister, put_to_canister, verify_confirmation};
 
 #[tokio::main]
 async fn main() {
-    let key_path = "client/test/blob_key.json";
+    // 基础准备
     let identity_path = "identity/identity.pem";
 
-    // basic setup
     let identity = BasicIdentity::from_pem_file(identity_path).unwrap();
     let agent = Arc::new(
         Agent::builder()
@@ -44,19 +44,6 @@ async fn main() {
     let owner = agent.get_principal().unwrap();
     let signature = SignatureCanister::new(signature_cid, agent.clone());
 
-    // update signature config: batch confirmation = 1
-    let signature_config = SignatureCanisterConfig {
-        confirmation_batch_size: 6,
-        confirmation_live_time: 1,
-        da_canisters: HashSet::from_iter(storage_canisters),
-        owner,
-    };
-
-    match signature.update_config(&signature_config).await {
-        Ok(_) => println!("update signature config success"),
-        Err(e) => eprintln!("update signature config failed: {}", e),
-    }
-
     // update storage canister config:
     let storage_canister_config = StorageCanisterConfig {
         owner,
@@ -74,73 +61,161 @@ async fn main() {
         Principal::from_text("v3y75-6iaaa-aaaak-qikaa-cai").unwrap(),
         agent.clone(),
     );
-
+    println!("{}", "*".repeat(30));
+    println!("start update storage canister config");
     let _ = join!(
         storage_1.update_config(&storage_canister_config),
         storage_2.update_config(&storage_canister_config)
     );
 
-    println!("updated storage canister config");
-    let mut storage = ICStorage::new(identity_path).unwrap();
-
-    // 测试存储blob，6个
     println!("{}", "*".repeat(30));
-    println!("start test save blob");
-    match put_to_canister(6, key_path.to_string(), &mut storage).await {
-        Ok(_) => println!("put to canister success"),
-        Err(e) => eprintln!("put to canister failed: {}", e),
-    }
+    println!("signature canister: start init and update config");
+    let _ = signature.init().await;
 
-    // 测试获取blob，6个
-    println!("{}", "*".repeat(30));
-    println!("start test get blob");
-    match get_from_canister(key_path.to_string(), &storage).await {
-        Ok(_) => println!("get from canister success"),
-        Err(e) => eprintln!("get from canister failed: {}", e),
-    }
-
-    // 测试获取confirmation
-    println!("{}", "*".repeat(30));
-    println!("start test verify confirmation");
-    match verify_confirmation(key_path.to_string()).await {
-        Ok(_) => println!("verify confirmation success"),
-        Err(e) => eprintln!("verify confirmation failed: {}", e),
-    }
-
-    let blob_key =
-        serde_json::from_str::<Vec<BlobKey>>(&std::fs::read_to_string(key_path).unwrap()).unwrap();
-
-    // put 7th blob
-    println!("{}", "*".repeat(30));
-    println!("start test save 7th blob");
-    match put_to_canister(1, key_path.to_string(), &mut storage).await {
-        Ok(_) => println!("put to canister success"),
-        Err(e) => eprintln!("put to canister failed: {}", e),
-    }
-
-    // get 1th blob
-    // 第一个应该已经retired
-    println!("{}", "*".repeat(30));
-    println!("start test get 1th blob");
-    match storage_1.get_blob(blob_key[0].digest).await {
-        Ok(_) => println!("get from canister success"),
-        Err(e) => eprintln!("get from canister failed: {}", e),
+    // update signature config: batch confirmation = 1
+    let signature_config = SignatureCanisterConfig {
+        confirmation_batch_size: 6,
+        confirmation_live_time: 1,
+        da_canisters: HashSet::from_iter(storage_canisters),
+        owner,
     };
 
-    // 再放5个blob
-    println!("{}", "*".repeat(30));
-    println!("start test save 5 blob");
-    match put_to_canister(5, key_path.to_string(), &mut storage).await {
-        Ok(_) => println!("put to canister success"),
-        Err(e) => eprintln!("put to canister failed: {}", e),
+    match signature.update_config(&signature_config).await {
+        Ok(_) => println!("update signature config success"),
+        Err(e) => eprintln!("update signature config failed: {}", e),
     }
 
-    // 获取confirmation
-    // 前面6个confirmation应该全部是invalid，后面6个应该是正常的
-    println!("{}", "*".repeat(30));
-    println!("start test verify confirmation");
-    match verify_confirmation(key_path.to_string()).await {
-        Ok(_) => println!("verify confirmation success"),
-        Err(e) => eprintln!("verify confirmation failed: {}", e),
+    println!("updated storage canister config");
+    let mut storage = ICStorage::new(identity_path).unwrap();
+    //
+    // // 测试存储blob，6个
+    // println!("{}", "*".repeat(30));
+    // println!("start test save blob");
+    // match put_to_canister(6, String::from("client/test/blob_key.json"), &mut storage).await {
+    //     Ok(_) => println!("put to canister success"),
+    //     Err(e) => eprintln!("put to canister failed: {}", e),
+    // }
+    //
+    // // 测试获取blob，6个
+    // println!("{}", "*".repeat(30));
+    // println!("start test get blob");
+    // match get_from_canister(String::from("client/test/blob_key.json"), &storage).await {
+    //     Ok(_) => println!("get from canister success"),
+    //     Err(e) => eprintln!("get from canister failed: {}", e),
+    // }
+    //
+    // // 测试获取confirmation
+    // println!("{}", "*".repeat(30));
+    // println!("start test verify confirmation");
+    // match verify_confirmation(String::from("client/test/blob_key.json"), &storage).await {
+    //     Ok(_) => println!("verify confirmation success"),
+    //     Err(e) => eprintln!("verify confirmation failed: {}", e),
+    // }
+    //
+    // let first_batch_blob_key = serde_json::from_str::<Vec<BlobKey>>(
+    //     &std::fs::read_to_string(String::from("client/test/blob_key.json")).unwrap(),
+    // )
+    // .unwrap();
+    //
+    // // put 7th blob
+    // println!("{}", "*".repeat(30));
+    // println!("start test save 7th blob");
+    // match put_to_canister(1, String::from("client/test/7-blob_key.json"), &mut storage).await {
+    //     Ok(_) => println!("put to canister success"),
+    //     Err(e) => eprintln!("put to canister failed: {}", e),
+    // }
+    //
+    // println!("{}", "*".repeat(30));
+    // println!("start test get 7th blob");
+    // match get_from_canister(String::from("client/test/7-blob_key.json"), &storage).await {
+    //     Ok(_) => println!("get from canister success"),
+    //     Err(e) => eprintln!("get from canister failed: {}", e),
+    // }
+    //
+    // // 再放5个blob
+    // println!("{}", "*".repeat(30));
+    // println!("start test save 5 blob");
+    // match put_to_canister(5, String::from("client/test/5-blob_key.json"), &mut storage).await {
+    //     Ok(_) => println!("put to canister success"),
+    //     Err(e) => eprintln!("put to canister failed: {}", e),
+    // }
+    //
+    // println!("{}", "*".repeat(30));
+    // println!("start test get 新的5个 blob");
+    // match get_from_canister(String::from("client/test/5-blob_key.json"), &storage).await {
+    //     Ok(_) => println!("get from canister success"),
+    //     Err(e) => eprintln!("get from canister failed: {}", e),
+    // }
+    //
+    // println!("{}", "*".repeat(30));
+    // println!("start test verify 7-th confirmation");
+    // match verify_confirmation(String::from("client/test/7-blob_key.json"), &storage).await {
+    //     Ok(_) => println!("verify confirmation success"),
+    //     Err(e) => eprintln!("verify confirmation failed: {}", e),
+    // }
+    //
+    // // 获取confirmation
+    // // 前面6个confirmation应该全部是invalid，后面6个应该是正常的
+    // println!("{}", "*".repeat(30));
+    // println!("start test verify 5-th confirmation");
+    // match verify_confirmation(String::from("client/test/5-blob_key.json"), &storage).await {
+    //     Ok(_) => println!("verify confirmation success"),
+    //     Err(e) => eprintln!("verify confirmation failed: {}", e),
+    // }
+}
+
+#[tokio::test]
+async fn test() {
+    let identity_path = "../identity/identity.pem";
+
+    let storage = ICStorage::new(identity_path).unwrap();
+
+    let key_path = "test/5-blob_key.json";
+    let mut file = OpenOptions::new()
+        .read(true)
+        .open(key_path)
+        .await
+        .expect("Unable to open file");
+
+    let mut content = String::new();
+    file.read_to_string(&mut content)
+        .await
+        .expect("Unable to read file");
+
+    let keys: Vec<BlobKey> = serde_json::from_str(&content).unwrap();
+
+    for (index, key) in keys.iter().enumerate() {
+        println!("Batch Index: {}", index);
+        match storage.get_blob(key.clone()).await {
+            Ok(v) => {
+                println!("digest = {}, length = {}", hex::encode(key.digest), v.len());
+            }
+            Err(e) => eprintln!("get from canister error: {:?}", e),
+        };
+    }
+
+    let keys =
+        serde_json::from_str::<Vec<BlobKey>>(&read_to_string(key_path).await.unwrap()).unwrap();
+
+    let sc = storage.signature_canister.clone();
+
+    for (index, key) in keys.iter().enumerate() {
+        println!("Batch Index: {}", index);
+        let confirmation = sc.get_confirmation(key.digest).await.unwrap();
+        match confirmation {
+            ConfirmationStatus::Confirmed(confirmation) => {
+                if sc.verify_confirmation(&confirmation).await {
+                    println!("confirmation verified, digest: {}", hex::encode(key.digest));
+                } else {
+                    println!("confirmation invalid, digest: {}", hex::encode(key.digest));
+                }
+            }
+            ConfirmationStatus::Pending => {
+                println!("confirmation is pending")
+            }
+            ConfirmationStatus::Invalid => {
+                println!("digest is invalid")
+            }
+        }
     }
 }

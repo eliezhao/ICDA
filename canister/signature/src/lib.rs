@@ -21,7 +21,7 @@
 use std::cell::RefCell;
 
 use candid::{candid_method, Principal};
-use ic_cdk::{caller, init, print, spawn};
+use ic_cdk::{caller, print, spawn};
 use ic_cdk_macros::{query, update};
 use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
 use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap};
@@ -134,11 +134,16 @@ async fn insert_digest(digest: [u8; 32]) {
             return;
         }
 
-        let current_index = index_map
-            .borrow()
-            .get(&CURRENT_INDEX_KEY.to_string())
-            .unwrap_or_default()
-            .0;
+        let mut current_index = 0;
+
+        let _index = index_map.borrow().get(&CURRENT_INDEX_KEY.to_string());
+        if let Some(BatchIndex(index)) = _index {
+            current_index = index;
+        } else {
+            index_map
+                .borrow_mut()
+                .insert(CURRENT_INDEX_KEY.to_string(), BatchIndex(current_index));
+        }
 
         index_map
             .borrow_mut()
@@ -184,16 +189,15 @@ fn update_config(config: Config) {
 
 #[update(name = "init")]
 #[candid_method]
-fn init() {
+async fn init() {
+    check_owner(caller());
     // init public key
-    spawn(async {
-        match init_public_key().await {
-            Ok(key) => {
-                PUBLIC_KEY.with_borrow_mut(|k| *k = key);
-            }
-            Err(e) => print(format!("get public key failed: {}", e)),
+    match init_public_key().await {
+        Ok(key) => {
+            PUBLIC_KEY.with_borrow_mut(|k| *k = key);
         }
-    });
+        Err(e) => print(format!("get public key failed: {}", e)),
+    }
 }
 
 candid::export_service!();
@@ -236,7 +240,7 @@ async fn update_signature(batch_index: u32, batch_confirmation: BatchConfirmatio
         Ok(SignatureReply { signature_hex }) => {
             confirmation.signature = Some(signature_hex);
             // 更新batch confirmation & insert
-            print("signed confirmation");
+            print(format!("update signature for batch index: {}", batch_index));
             BATCH_CONFIRMATION.with_borrow_mut(|c| c.insert(batch_index, confirmation));
         }
         Err(e) => print(format!("sign failed: {}", e)),
@@ -286,11 +290,20 @@ fn prune_expired_confirmation(current_batch_index: u32) {
             .collect::<Vec<_>>();
 
         // remove batch confirmation
+        print(format!(
+            "remove expired batch index: {}",
+            expired_batch_index
+        ));
         c.remove(&expired_batch_index);
 
         // remove nodes index
         INDEX_MAP.with_borrow_mut(|m| {
             for key in expired_node_keys.iter() {
+                print(format!(
+                    "remove expired node key: {}, map size: {}",
+                    key,
+                    m.len()
+                ));
                 m.remove(key);
             }
         });

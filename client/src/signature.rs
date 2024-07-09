@@ -9,6 +9,7 @@ use rs_merkle::MerkleProof;
 use secp256k1::ecdsa::Signature;
 use secp256k1::{Message, PublicKey, Secp256k1};
 use serde::Serialize;
+use tracing::error;
 
 #[derive(CandidType, Deserialize, Serialize, Clone, Debug)]
 pub struct Proof {
@@ -33,7 +34,7 @@ pub enum ConfirmationStatus {
 
 #[derive(CandidType, Serialize, Deserialize, Debug)]
 pub struct SignatureCanisterConfig {
-    pub confirmation_batch_size: u32,
+    pub confirmation_batch_size: u64,
     pub confirmation_live_time: u32,
     pub da_canisters: HashSet<Principal>,
     pub owner: Principal, // who can change confirmation config
@@ -101,6 +102,7 @@ impl SignatureCanister {
         let pubkey = PublicKey::from_slice(&public_key).expect("failed to parse public key");
         let secp = Secp256k1::new();
         if !secp.verify_ecdsa(&msg, &sig, &pubkey).is_ok() {
+            error!("signature verification failed");
             return false;
         }
 
@@ -113,7 +115,17 @@ impl SignatureCanister {
             confirmation.root,
             &[confirmation.proof.leaf_index],
             &[confirmation.proof.leaf_digest],
-            12,
+            6,
         )
+    }
+
+    pub async fn init(&self) -> Result<()> {
+        let _ = self
+            .agent
+            .update(&self.canister_id, "init")
+            .with_arg(Encode!().unwrap())
+            .call_and_wait()
+            .await?;
+        Ok(())
     }
 }

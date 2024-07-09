@@ -88,7 +88,7 @@ async fn talk_to_canister(
             let _ = get_from_canister(key_path, &da).await;
         }
         Action::Verify => {
-            let _ = verify_confirmation(key_path).await;
+            let _ = verify_confirmation(key_path, &da).await;
         }
     }
 }

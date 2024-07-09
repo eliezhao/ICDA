@@ -28,7 +28,7 @@ pub const SIGNATURE_CANISTER: &str = "r34pn-oaaaa-aaaak-qinga-cai";
 
 // 1 week in nanos
 pub const BLOB_LIVE_TIME: u128 = 7 * 24 * 60 * 60 * 1_000_000_000;
-pub const CONFIRMATION_BATCH_SIZE: u32 = 12;
+pub const CONFIRMATION_BATCH_SIZE: u64 = 12;
 pub const CONFIRMATION_LIVE_TIME: u32 = 60 * 60 * 24 * 7 + 1; // 1 week in nanos
 
 // canister存的时候主要用digest,time用server的time

@@ -74,7 +74,7 @@ pub async fn put_to_canister(
     let mut file = OpenOptions::new()
         .write(true)
         .create(true)
-        .append(true)
+        .truncate(true)
         .open(key_path)
         .await
         .expect("Unable to open file");
@@ -88,7 +88,7 @@ pub async fn put_to_canister(
     Ok(())
 }
 
-pub async fn verify_confirmation(key_path: String) -> anyhow::Result<()> {
+pub async fn verify_confirmation(key_path: String, da: &ICStorage) -> anyhow::Result<()> {
     let mut file = OpenOptions::new()
         .read(true)
         .open(key_path)
@@ -102,9 +102,7 @@ pub async fn verify_confirmation(key_path: String) -> anyhow::Result<()> {
 
     let keys: Vec<BlobKey> = serde_json::from_str(&content).unwrap();
 
-    let ics = ICStorage::new("../bin/identity.pem").unwrap();
-
-    let sc = ics.signature_canister.clone();
+    let sc = da.signature_canister.clone();
 
     for (index, key) in keys.iter().enumerate() {
         info!("Batch Index: {}", index);
