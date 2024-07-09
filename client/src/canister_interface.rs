@@ -114,7 +114,13 @@ impl ICStorage {
         }
 
         let mut buffer = Vec::with_capacity(REPLICA_NUM);
-        let _ = rx.recv_many(&mut buffer, REPLICA_NUM).await;
+
+        for _ in 0..REPLICA_NUM {
+            if let Some(v) = rx.recv().await {
+                buffer.push(v)
+            }
+        }
+
         rx.close();
 
         for (cid, res) in buffer.iter() {
@@ -178,7 +184,13 @@ impl ICStorage {
         info!("ICStorage::get_blob(): waiting for blobs");
 
         let mut res = Vec::with_capacity(REPLICA_NUM);
-        let _ = rx.recv_many(&mut res, REPLICA_NUM).await;
+
+        for _ in 0..REPLICA_NUM {
+            if let Some(v) = rx.recv().await {
+                res.push(v)
+            }
+        }
+
         let blobs = res
             .iter()
             .filter_map(|(cid, res)| match res {
