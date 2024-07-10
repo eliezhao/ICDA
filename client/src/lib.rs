@@ -3,6 +3,7 @@ use futures::future::join_all;
 use rand::Rng;
 use serde_json::json;
 use std::collections::HashSet;
+use tokio::fs;
 use tokio::fs::OpenOptions;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tracing::{error, info, warn};
@@ -35,7 +36,9 @@ pub async fn get_from_canister(key_path: String, da: &ICStorage) -> anyhow::Resu
     for key in keys.iter() {
         tasks.push(async move {
             match da.get_blob(key.clone()).await {
-                Ok(_) => {}
+                Ok(_) => {
+                    info!("get from canister success, blob key: {:?}", key);
+                }
                 Err(e) => error!("get from canister error: {:?}", e),
             }
         });
@@ -69,25 +72,28 @@ pub async fn put_to_canister(
         keys.push(key)
     }
 
-    let mut file = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .open(key_path)
-        .await
-        .expect("Unable to open file");
+    let content = fs::read_to_string(&key_path).await.unwrap_or_default();
 
-    let mut content = String::new();
-    file.read_to_string(&mut content)
-        .await
-        .expect("Unable to read file");
+    let mut old_keys = Vec::new();
 
-    let old_keys: Vec<BlobKey> = serde_json::from_str(&content).unwrap();
+    if !content.is_empty() {
+        old_keys = serde_json::from_str(content.trim()).unwrap_or_else(|e| {
+            error!("parse old keys failed: {}", e);
+            Vec::new()
+        });
+    }
 
     keys.extend(old_keys);
 
     let json_value = json!(keys);
     let json_str = serde_json::to_string_pretty(&json_value).unwrap();
+    let mut file = OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .create(true)
+        .open(key_path)
+        .await
+        .expect("Unable to open file");
     // write json str into file
     file.write_all(json_str.as_bytes())
         .await

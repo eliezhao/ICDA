@@ -103,15 +103,15 @@ async fn save_blob(chunk: BlobChunk) -> Result<(), String> {
     if blob_exist(&hexed_digest) {
         blob::insert_to_store_map(hexed_digest, chunk.total, &chunk.data);
     } else {
-        // 1. insert blob share into the map
-        blob::insert_to_store_map(hexed_digest, chunk.total, &chunk.data);
-
-        // 2. if expired blob id exists, remove it from a map
+        // 1. if expired blob id exists, remove it from a map
         // remove expired blob
         let expired_key = insert_to_time_heap(chunk.digest, chunk.timestamp);
         if let Some(expired_blob) = expired_key {
             remove_expired_blob_from_map(expired_blob.digest)
         }
+
+        // 2. insert blob share into the map
+        blob::insert_to_store_map(hexed_digest, chunk.total, &chunk.data);
 
         // 3. notify signature canister to generate confirmation
         spawn(notify_generate_confirmation(chunk.digest));
