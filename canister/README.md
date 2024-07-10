@@ -37,7 +37,4 @@
 
 新版本:
 digest 作为唯一的key，可以辅以index
-// todo: merkle tree改为森林模式，一段时间删除一个tree
-// todo: production中获取一次public key然后保存就行
-// todo : get confirmation return result
 // todo : threshold signature cost? and 修改cycle send
