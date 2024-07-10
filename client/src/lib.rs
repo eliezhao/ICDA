@@ -37,7 +37,7 @@ pub async fn get_from_canister(key_path: String, da: &ICStorage) -> anyhow::Resu
         tasks.push(async move {
             match da.get_blob(key.clone()).await {
                 Ok(_) => {
-                    info!("get from canister success, blob key: {:?}", key);
+                    info!("get from canister success, blob key: \n{:?}", key);
                 }
                 Err(e) => error!("get from canister error: {:?}", e),
             }
