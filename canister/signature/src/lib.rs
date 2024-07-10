@@ -134,7 +134,8 @@ async fn insert_digest(digest: [u8; 32]) {
             return;
         }
 
-        let mut current_index = 0;
+        // default current index = 1, compatible with live time
+        let mut current_index = 1;
 
         let _index = index_map.borrow().get(&CURRENT_INDEX_KEY.to_string());
         if let Some(BatchIndex(index)) = _index {

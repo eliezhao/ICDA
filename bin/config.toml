@@ -1,4 +1,8 @@
-identity = "identity.pem"
-batch_number = 1
-mode = { Canister = { } }
-blob_key = "blob_key.json"
+[identity]
+path = "../identity/identity.pem"
+
+[batch]
+batch_number = 6 # 上传多少blob
+
+[blobkey]
+path = "blob_key.json"

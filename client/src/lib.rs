@@ -1,23 +1,18 @@
-use std::collections::HashSet;
-use std::sync::Arc;
-
 use candid::Principal;
-use ic_agent::identity::BasicIdentity;
-use ic_agent::Agent;
+use futures::future::join_all;
 use rand::Rng;
 use serde_json::json;
+use std::collections::HashSet;
 use tokio::fs::OpenOptions;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tracing::{error, info, warn};
 
-use crate::canister_interface::{
-    BlobKey, ICStorage, CANISTER_COLLECTIONS, CONFIRMATION_BATCH_SIZE, CONFIRMATION_LIVE_TIME,
-    SIGNATURE_CANISTER,
-};
-use crate::signature::{ConfirmationStatus, SignatureCanister};
+use crate::ic_storage::{BlobKey, ICStorage, SIGNATURE_CANISTER};
+use crate::signature::{ConfirmationStatus, SignatureCanisterConfig, VerifyResult};
+use crate::storage::StorageCanisterConfig;
 
-pub mod canister_interface;
 pub mod ic;
+pub mod ic_storage;
 pub mod signature;
 pub mod storage;
 
@@ -102,62 +97,108 @@ pub async fn verify_confirmation(key_path: String, da: &ICStorage) -> anyhow::Re
 
     let keys: Vec<BlobKey> = serde_json::from_str(&content).unwrap();
 
-    let sc = da.signature_canister.clone();
+    let (tx, mut rx) = tokio::sync::mpsc::channel(keys.len());
 
-    for (index, key) in keys.iter().enumerate() {
-        info!("Batch Index: {}", index);
-        let confirmation = sc.get_confirmation(key.digest).await.unwrap();
-        match confirmation {
-            ConfirmationStatus::Confirmed(confirmation) => {
-                if sc.verify_confirmation(&confirmation).await {
-                    info!("confirmation verified, digest: {}", hex::encode(key.digest));
-                } else {
-                    error!("confirmation invalid, digest: {}", hex::encode(key.digest));
+    for bk in keys.iter() {
+        let _tx = tx.clone();
+        let digest = bk.digest;
+        let _da = da.clone();
+        tokio::spawn(async move {
+            let confirmation = _da
+                .signature_canister
+                .get_confirmation(digest)
+                .await
+                .unwrap();
+            let hexed_digest = hex::encode(digest);
+            match _tx.send((hexed_digest, confirmation)).await {
+                Ok(_) => info!("send confirmation success"),
+                Err(e) => error!("send confirmation failed, error: {}", e),
+            }
+        });
+    }
+
+    // receive channel
+    for _ in 0..keys.len() {
+        if let Some((hexed_digest, confirmation)) = rx.recv().await {
+            match confirmation {
+                ConfirmationStatus::Confirmed(confirmation) => {
+                    match da
+                        .signature_canister
+                        .verify_confirmation(&confirmation)
+                        .await
+                    {
+                        VerifyResult::Valid => {
+                            info!("confirmation verified, digest: {}", hexed_digest);
+                        }
+                        VerifyResult::InvalidProof => {
+                            error!("confirmation proof is invalid, digest: {}", hexed_digest)
+                        }
+                        VerifyResult::InvalidSignature(err) => {
+                            error!(
+                                "confirmation signature is invalid: {}, digest: {}",
+                                err, hexed_digest
+                            )
+                        }
+                    }
                 }
-            }
-            ConfirmationStatus::Pending => {
-                warn!("confirmation is pending")
-            }
-            ConfirmationStatus::Invalid => {
-                error!("digest is invalid")
+                ConfirmationStatus::Pending => {
+                    warn!("confirmation is pending, digest: {}", hexed_digest)
+                }
+                ConfirmationStatus::Invalid => {
+                    error!("digest is invalid, digest: {}", hexed_digest)
+                }
             }
         }
     }
+    rx.close();
 
     Ok(())
 }
 
-async fn init_signature_canister(pem_path: String) -> anyhow::Result<()> {
-    let identity = BasicIdentity::from_pem_file(pem_path)?;
-    let agent = Agent::builder()
-        .with_url("https://ic0.app")
-        .with_identity(identity)
-        .build()
-        .unwrap();
-    let owner = agent.get_principal().unwrap();
-    let da_canisters = HashSet::from_iter(
-        CANISTER_COLLECTIONS
-            .iter()
-            .map(|x| {
-                x.iter()
-                    .map(|x| Principal::from_text(x).unwrap())
-                    .collect::<Vec<Principal>>()
-            })
-            .collect::<Vec<_>>()
-            .concat(),
-    );
-    let confirmation_live_time = CONFIRMATION_LIVE_TIME;
-    let confirmation_batch_size = CONFIRMATION_BATCH_SIZE;
-    let config = signature::SignatureCanisterConfig {
+pub async fn init_canister(da: &ICStorage) -> anyhow::Result<()> {
+    let owner = da.signature_canister.agent.get_principal().unwrap();
+
+    // update storage canister config:
+    let storage_canister_config = StorageCanisterConfig {
         owner,
-        da_canisters,
-        confirmation_live_time,
-        confirmation_batch_size,
+        signature_canister: Principal::from_text(SIGNATURE_CANISTER).unwrap(),
+        query_response_size: 2621440,
+        canister_storage_threshold: 6,
     };
 
-    let signature_canister_id = Principal::from_text(SIGNATURE_CANISTER).unwrap();
-    let signature_canister = SignatureCanister::new(signature_canister_id, Arc::new(agent));
-    signature_canister.update_config(&config).await?;
+    let mut tasks = Vec::with_capacity(da.storage_canisters_map.len());
+    for (_, s) in da.storage_canisters_map.iter() {
+        let _config = storage_canister_config.clone();
+        tasks.push(async move {
+            match s.update_config(&_config).await {
+                Ok(_) => info!(
+                    "update storage canister config success, cid: {}",
+                    s.canister_id
+                ),
+                Err(e) => error!(
+                    "update storage canister config failed, cid: {}, error: {}",
+                    s.canister_id, e
+                ),
+            }
+        });
+    }
+    join_all(tasks).await;
+    info!("updated storage canister config");
+
+    let _ = da.signature_canister.init().await;
+
+    // update signature config: batch confirmation = 1
+    let signature_config = SignatureCanisterConfig {
+        confirmation_batch_size: 6,
+        confirmation_live_time: 1,
+        da_canisters: HashSet::from_iter(da.storage_canisters_map.keys().copied()),
+        owner,
+    };
+    match da.signature_canister.update_config(&signature_config).await {
+        Ok(_) => info!("update signature config success"),
+        Err(e) => error!("update signature config failed: {}", e),
+    }
+    info!("signature canister initialized and updated");
 
     Ok(())
 }

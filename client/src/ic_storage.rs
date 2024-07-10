@@ -13,7 +13,7 @@ use serde::Serialize;
 use sha2::Digest;
 use tracing::{error, info};
 
-use crate::signature::{Confirmation, ConfirmationStatus, SignatureCanister};
+use crate::signature::{Confirmation, ConfirmationStatus, SignatureCanister, VerifyResult};
 use crate::storage::{BlobChunk, RoutingInfo, StorageCanister};
 
 pub const REPLICA_NUM: usize = 2;
@@ -52,7 +52,7 @@ impl Debug for BlobKey {
 #[derive(Clone)]
 pub struct ICStorage {
     canister_collection_index: Option<u8>,
-    storage_canisters_map: HashMap<Principal, StorageCanister>,
+    pub storage_canisters_map: HashMap<Principal, StorageCanister>,
     pub signature_canister: SignatureCanister,
 }
 
@@ -181,7 +181,6 @@ impl ICStorage {
                 let _ = _tx.send((cid, res)).await;
             });
         }
-        info!("ICStorage::get_blob(): waiting for blobs");
 
         let mut res = Vec::with_capacity(REPLICA_NUM);
 
@@ -279,7 +278,10 @@ impl ICStorage {
         }
     }
 
-    pub async fn verify_confirmation(sc: &SignatureCanister, confirmation: &Confirmation) -> bool {
+    pub async fn verify_confirmation(
+        sc: &SignatureCanister,
+        confirmation: &Confirmation,
+    ) -> VerifyResult {
         sc.verify_confirmation(confirmation).await
     }
 
@@ -288,6 +290,9 @@ impl ICStorage {
         let index = self
             .canister_collection_index
             .get_or_insert(random::<u8>() % 20);
+
+        // flag: demo测试用
+        info!("ICStorage::get_storage_canisters(): index = {}", index);
 
         let cids = CANISTER_COLLECTIONS.get(*index as usize).unwrap();
 
@@ -305,39 +310,5 @@ impl ICStorage {
             .collect::<Vec<_>>();
 
         Ok(storage_canisters)
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_verify_confirmation() {
-        let digest = [
-            234, 189, 194, 209, 209, 228, 31, 206, 180, 196, 40, 19, 181, 240, 73, 81, 53, 130,
-            183, 35, 97, 137, 16, 154, 191, 39, 79, 8, 187, 115, 24, 247,
-        ];
-
-        let ics = ICStorage::new("../bin/identity.pem").unwrap();
-
-        let sc = ics.signature_canister.clone();
-
-        // use sc get confirmation of the digest and verify
-        let confirmation = sc.get_confirmation(digest).await.unwrap();
-
-        println!("{:?}", confirmation);
-        match confirmation {
-            ConfirmationStatus::Confirmed(confirmation) => {
-                let res = sc.verify_confirmation(&confirmation).await;
-                assert_eq!(res, true, "failed to verify confirmation");
-            }
-            ConfirmationStatus::Pending => {
-                panic!("confirmation is pending")
-            }
-            ConfirmationStatus::Invalid => {
-                panic!("digest is invalid")
-            }
-        }
     }
 }

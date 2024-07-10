@@ -93,7 +93,7 @@ pub struct StorageCanisterConfig {
 
 #[derive(Clone)]
 pub struct StorageCanister {
-    agent: Arc<Agent>,
+    pub agent: Arc<Agent>,
     pub canister_id: Principal,
 }
 

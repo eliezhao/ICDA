@@ -9,8 +9,8 @@ use clap::{Parser, ValueEnum};
 use tokio::fs;
 use tracing::{info, Level};
 
-use client::canister_interface::ICStorage;
-use client::{get_from_canister, put_to_canister, verify_confirmation};
+use client::ic_storage::ICStorage;
+use client::{get_from_canister, init_canister, put_to_canister, verify_confirmation};
 
 #[derive(Parser)]
 struct Cli {
@@ -21,29 +21,45 @@ struct Cli {
     action: Action,
 }
 
-#[derive(serde::Deserialize, Debug)]
-struct Config {
-    identity: String,
-    mode: Mode,
-    // test use
-    batch_number: usize,
-    blob_key: String,
-}
-
-#[derive(serde::Deserialize, Debug)]
-enum Mode {
-    Canister,
-    Server { ip: String }, // ipv4
-}
-
-// put get config default : keys.json
 #[derive(serde::Deserialize, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 enum Action {
     Put,
     Get,
     Verify,
+    Init,
 }
 
+#[derive(serde::Deserialize, serde::Serialize, Debug)]
+struct Config {
+    identity: IdentityConfig,
+    batch: BatchConfig,
+    #[serde(rename = "blobkey")]
+    blob_key: BlobKeyConfig,
+    mode: Option<Mode>,
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Debug)]
+enum Mode {
+    Canister,
+    Server { ip: String }, // ipv4
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Debug)]
+struct IdentityConfig {
+    path: String,
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Debug)]
+struct BatchConfig {
+    batch_number: usize,
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Debug)]
+struct BlobKeyConfig {
+    path: String,
+}
+
+// put get config default : keys.json
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt().with_max_level(Level::INFO).init();
@@ -54,19 +70,31 @@ async fn main() -> Result<()> {
 
     info!("Start client with config: {:?}", config);
 
-    match config.mode {
-        Mode::Canister => {
-            talk_to_canister(
-                config.identity,
-                config.batch_number,
-                config.blob_key,
-                cli.action,
-            )
-            .await;
+    if let Some(mode) = config.mode {
+        match mode {
+            Mode::Canister => {
+                info!("Mode: Canister");
+                talk_to_canister(
+                    config.identity.path,
+                    config.batch.batch_number,
+                    config.blob_key.path,
+                    cli.action,
+                )
+                .await;
+            }
+            Mode::Server { ip } => {
+                info!("Mode: Server, ip: {}", ip);
+                talk_to_server(ip).await;
+            }
         }
-        Mode::Server { ip } => {
-            talk_to_server(ip).await;
-        }
+    } else {
+        talk_to_canister(
+            config.identity.path,
+            config.batch.batch_number,
+            config.blob_key.path,
+            cli.action,
+        )
+        .await;
     }
 
     Ok(())
@@ -89,6 +117,9 @@ async fn talk_to_canister(
         }
         Action::Verify => {
             let _ = verify_confirmation(key_path, &da).await;
+        }
+        Action::Init => {
+            let _ = init_canister(&da).await;
         }
     }
 }

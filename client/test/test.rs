@@ -11,7 +11,7 @@ use ic_agent::identity::BasicIdentity;
 use ic_agent::Agent;
 use tokio::join;
 
-use client::canister_interface::{CANISTER_COLLECTIONS, SIGNATURE_CANISTER};
+use client::ic_storage::{CANISTER_COLLECTIONS, SIGNATURE_CANISTER};
 use client::signature::{SignatureCanister, SignatureCanisterConfig};
 use client::storage::{StorageCanister, StorageCanisterConfig};
 
