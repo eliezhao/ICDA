@@ -42,7 +42,7 @@ pub struct BlobKey {
 impl Debug for BlobKey {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("BlobKey")
-            .field("digest", &hex::encode(&self.digest))
+            .field("digest", &hex::encode(self.digest))
             .field("expiry_timestamp", &self.expiry_timestamp)
             .field("routing_info", &self.routing_info)
             .finish()

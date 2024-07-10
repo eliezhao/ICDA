@@ -101,7 +101,7 @@ impl SignatureCanister {
             .expect("failed to parse message");
         let pubkey = PublicKey::from_slice(&public_key).expect("failed to parse public key");
         let secp = Secp256k1::new();
-        if !secp.verify_ecdsa(&msg, &sig, &pubkey).is_ok() {
+        if secp.verify_ecdsa(&msg, &sig, &pubkey).is_err() {
             error!("signature verification failed");
             return false;
         }

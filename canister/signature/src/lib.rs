@@ -61,7 +61,7 @@ thread_local! {
         MEMORY_MANAGER.with_borrow(|m| m.get(MemoryId::new(1)))
     ));
 
-    static PUBLIC_KEY: RefCell<Vec<u8>> = RefCell::new(Vec::new());
+    static PUBLIC_KEY: RefCell<Vec<u8>> = const { RefCell::new(Vec::new()) };
 }
 
 const CURRENT_INDEX_KEY: &str = "current_index";

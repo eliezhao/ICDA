@@ -63,8 +63,7 @@ pub fn insert_to_time_heap(digest: [u8; 32], timestamp: u128) -> Option<BlobId> 
 
         // 删除过期的blob, 返回过期的blob
         if heap.len() > DACONFIG.with_borrow(|c| c.canister_storage_threshold) as u64 {
-            let expired_item = heap.pop();
-            expired_item
+            heap.pop()
         } else {
             None
         }

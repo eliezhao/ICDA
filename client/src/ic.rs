@@ -100,7 +100,7 @@ impl CmcAgent {
 pub async fn get_account_balance(agent: Agent, ledger: LedgerAgent) -> anyhow::Result<()> {
     let account = Account::from(agent.get_principal().unwrap());
     let balance = ledger.balance_of(account).await?;
-    println!("原始balance: {}", balance.to_string());
+    println!("原始balance: {}", balance);
     let balance = balance.div(100_000_000usize);
     let account_id = AccountIdentifier::from(agent.get_principal().unwrap());
     println!(
@@ -108,7 +108,7 @@ pub async fn get_account_balance(agent: Agent, ledger: LedgerAgent) -> anyhow::R
         Principal: {},\n
         Account ID: {:?},\n 
         Balance: {:?}",
-        agent.get_principal().unwrap().to_string(),
+        agent.get_principal().unwrap(),
         account_id.to_string(),
         balance.to_string()
     );

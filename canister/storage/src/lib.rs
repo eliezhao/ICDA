@@ -160,5 +160,5 @@ fn check_caller(c: Principal) -> bool {
 }
 
 fn blob_exist(hexed_digest: &String) -> bool {
-    BLOBS.with(|m| m.borrow().contains_key(&hexed_digest))
+    BLOBS.with(|m| m.borrow().contains_key(hexed_digest))
 }

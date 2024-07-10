@@ -9,12 +9,10 @@ use std::sync::Arc;
 use candid::Principal;
 use ic_agent::identity::BasicIdentity;
 use ic_agent::Agent;
-use tokio::fs::{read_to_string, OpenOptions};
-use tokio::io::AsyncReadExt;
 use tokio::join;
 
-use client::canister_interface::{BlobKey, ICStorage, CANISTER_COLLECTIONS, SIGNATURE_CANISTER};
-use client::signature::{ConfirmationStatus, SignatureCanister, SignatureCanisterConfig};
+use client::canister_interface::{CANISTER_COLLECTIONS, SIGNATURE_CANISTER};
+use client::signature::{SignatureCanister, SignatureCanisterConfig};
 use client::storage::{StorageCanister, StorageCanisterConfig};
 
 #[tokio::main]
@@ -33,12 +31,11 @@ async fn main() {
     let signature_cid = Principal::from_text(SIGNATURE_CANISTER).unwrap();
     let storage_canisters = CANISTER_COLLECTIONS
         .iter()
-        .map(|c| {
+        .flat_map(|c| {
             c.iter()
                 .map(|x| Principal::from_text(x).unwrap())
                 .collect::<Vec<Principal>>()
         })
-        .flatten()
         .collect::<Vec<_>>();
 
     let owner = agent.get_principal().unwrap();
@@ -86,8 +83,8 @@ async fn main() {
     }
 
     println!("updated storage canister config");
-    let mut storage = ICStorage::new(identity_path).unwrap();
-    //
+    // let mut storage = ICStorage::new(identity_path).unwrap();
+
     // // 测试存储blob，6个
     // println!("{}", "*".repeat(30));
     // println!("start test save blob");
@@ -162,60 +159,4 @@ async fn main() {
     //     Ok(_) => println!("verify confirmation success"),
     //     Err(e) => eprintln!("verify confirmation failed: {}", e),
     // }
-}
-
-#[tokio::test]
-async fn test() {
-    let identity_path = "../identity/identity.pem";
-
-    let storage = ICStorage::new(identity_path).unwrap();
-
-    let key_path = "test/5-blob_key.json";
-    let mut file = OpenOptions::new()
-        .read(true)
-        .open(key_path)
-        .await
-        .expect("Unable to open file");
-
-    let mut content = String::new();
-    file.read_to_string(&mut content)
-        .await
-        .expect("Unable to read file");
-
-    let keys: Vec<BlobKey> = serde_json::from_str(&content).unwrap();
-
-    for (index, key) in keys.iter().enumerate() {
-        println!("Batch Index: {}", index);
-        match storage.get_blob(key.clone()).await {
-            Ok(v) => {
-                println!("digest = {}, length = {}", hex::encode(key.digest), v.len());
-            }
-            Err(e) => eprintln!("get from canister error: {:?}", e),
-        };
-    }
-
-    let keys =
-        serde_json::from_str::<Vec<BlobKey>>(&read_to_string(key_path).await.unwrap()).unwrap();
-
-    let sc = storage.signature_canister.clone();
-
-    for (index, key) in keys.iter().enumerate() {
-        println!("Batch Index: {}", index);
-        let confirmation = sc.get_confirmation(key.digest).await.unwrap();
-        match confirmation {
-            ConfirmationStatus::Confirmed(confirmation) => {
-                if sc.verify_confirmation(&confirmation).await {
-                    println!("confirmation verified, digest: {}", hex::encode(key.digest));
-                } else {
-                    println!("confirmation invalid, digest: {}", hex::encode(key.digest));
-                }
-            }
-            ConfirmationStatus::Pending => {
-                println!("confirmation is pending")
-            }
-            ConfirmationStatus::Invalid => {
-                println!("digest is invalid")
-            }
-        }
-    }
 }
