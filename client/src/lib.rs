@@ -30,13 +30,19 @@ pub async fn get_from_canister(key_path: String, da: &ICStorage) -> anyhow::Resu
 
     let keys: Vec<BlobKey> = serde_json::from_str(&content).unwrap();
 
-    for (index, key) in keys.iter().enumerate() {
-        info!("Batch Index: {}", index);
-        match da.get_blob(key.clone()).await {
-            Ok(_) => {}
-            Err(e) => error!("get from canister error: {:?}", e),
-        };
+    let mut tasks = Vec::new();
+
+    for key in keys.iter() {
+        tasks.push(async move {
+            match da.get_blob(key.clone()).await {
+                Ok(_) => {}
+                Err(e) => error!("get from canister error: {:?}", e),
+            }
+        });
     }
+
+    join_all(tasks).await;
+
     Ok(())
 }
 
@@ -53,18 +59,15 @@ pub async fn put_to_canister(
         rng.fill(&mut i[..]);
     }
 
-    let mut response = Vec::new();
+    let mut keys = Vec::with_capacity(batch.len());
 
     for (index, item) in batch.iter().enumerate() {
         info!("Batch Index: {}", index);
         let res = da.save_blob(item.to_vec()).await?;
         let raw = String::from_utf8(res).unwrap();
         let key = serde_json::from_str::<BlobKey>(&raw).unwrap();
-        response.push(key)
+        keys.push(key)
     }
-
-    let json_value = json!(response);
-    let json_str = serde_json::to_string_pretty(&json_value).unwrap();
 
     let mut file = OpenOptions::new()
         .write(true)
@@ -74,6 +77,17 @@ pub async fn put_to_canister(
         .await
         .expect("Unable to open file");
 
+    let mut content = String::new();
+    file.read_to_string(&mut content)
+        .await
+        .expect("Unable to read file");
+
+    let old_keys: Vec<BlobKey> = serde_json::from_str(&content).unwrap();
+
+    keys.extend(old_keys);
+
+    let json_value = json!(keys);
+    let json_str = serde_json::to_string_pretty(&json_value).unwrap();
     // write json str into file
     file.write_all(json_str.as_bytes())
         .await
@@ -111,7 +125,7 @@ pub async fn verify_confirmation(key_path: String, da: &ICStorage) -> anyhow::Re
                 .unwrap();
             let hexed_digest = hex::encode(digest);
             match _tx.send((hexed_digest, confirmation)).await {
-                Ok(_) => info!("send confirmation success"),
+                Ok(_) => {}
                 Err(e) => error!("send confirmation failed, error: {}", e),
             }
         });
@@ -150,7 +164,6 @@ pub async fn verify_confirmation(key_path: String, da: &ICStorage) -> anyhow::Re
             }
         }
     }
-    rx.close();
 
     Ok(())
 }
@@ -162,8 +175,8 @@ pub async fn init_canister(da: &ICStorage) -> anyhow::Result<()> {
     let storage_canister_config = StorageCanisterConfig {
         owner,
         signature_canister: Principal::from_text(SIGNATURE_CANISTER).unwrap(),
-        query_response_size: 2621440,
-        canister_storage_threshold: 6,
+        query_response_size: 2621440, // query response size, current 2.5 M
+        canister_storage_threshold: 6, // every 6 blobs => 1 retired
     };
 
     let mut tasks = Vec::with_capacity(da.storage_canisters_map.len());
@@ -189,8 +202,8 @@ pub async fn init_canister(da: &ICStorage) -> anyhow::Result<()> {
 
     // update signature config: batch confirmation = 1
     let signature_config = SignatureCanisterConfig {
-        confirmation_batch_size: 6,
-        confirmation_live_time: 1,
+        confirmation_batch_size: 6, // 6 blobs => 1 confirmation
+        confirmation_live_time: 1,  // 1 batch 1 expired
         da_canisters: HashSet::from_iter(da.storage_canisters_map.keys().copied()),
         owner,
     };
