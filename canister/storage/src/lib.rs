@@ -1,20 +1,24 @@
-use std::cell::RefCell;
-
-use candid::{candid_method, Principal};
-use ic_cdk::{caller, spawn};
-use ic_cdk_macros::*;
-use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
-use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap, StableMinHeap};
-
 use crate::blob::{remove_expired_blob_from_map, Blob, BlobChunk};
 use crate::config::Config;
 use crate::time_heap::{insert_to_time_heap, BlobId};
+use candid::{candid_method, Principal};
+use ic_cdk::{caller, print, spawn};
+use ic_cdk_macros::*;
+use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
+use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap, StableMinHeap};
+use sha2::digest::core_api::{CoreWrapper, CtVariableCoreWrapper};
+use sha2::digest::typenum::U32;
+use sha2::{Digest, Sha256};
+use sha2::{OidSha256, Sha256VarCore};
+use std::cell::RefCell;
+use std::collections::BTreeMap;
 
 mod blob;
 mod config;
 mod time_heap;
 
 type Memory = VirtualMemory<DefaultMemoryImpl>;
+type Hasher = CoreWrapper<CtVariableCoreWrapper<Sha256VarCore, U32, OidSha256>>;
 
 thread_local! {
 
@@ -40,6 +44,8 @@ thread_local! {
             MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(1))),
         ).unwrap()
     );
+
+    static TEMP_DIGEST_STATE: RefCell<BTreeMap<String, Hasher>> = const { RefCell::new(BTreeMap::new()) };
 }
 
 // Retrieves the value associated with the given key if it exists.
@@ -100,22 +106,43 @@ async fn save_blob(chunk: BlobChunk) -> Result<(), String> {
 
     let hexed_digest = hex::encode(chunk.digest);
 
-    if blob_exist(&hexed_digest) {
-        blob::insert_to_store_map(hexed_digest, chunk.total, &chunk.data);
-    } else {
+    // 1. insert into time heap
+    //    新的blob到了，检查是否有expired，如果有就remove
+    if !blob_exist(&hexed_digest) {
         // 1. if expired blob id exists, remove it from a map
         // remove expired blob
         let expired_key = insert_to_time_heap(chunk.digest, chunk.timestamp);
         if let Some(expired_blob) = expired_key {
             remove_expired_blob_from_map(expired_blob.digest)
         }
-
-        // 2. insert blob share into the map
-        blob::insert_to_store_map(hexed_digest, chunk.total, &chunk.data);
-
-        // 3. notify signature canister to generate confirmation
-        spawn(notify_generate_confirmation(chunk.digest));
     }
+
+    // 2. 更新digest state
+    update_digest(&hexed_digest, &chunk.data);
+
+    // 4. 如果是最后一片，检查是否match
+    let received_blob_length =
+        chunk.data.len() + BLOBS.with_borrow(|m| m.get(&hexed_digest).unwrap().len());
+    if chunk.total.eq(&received_blob_length) {
+        if !check_digest(&hexed_digest, &chunk.digest) {
+            print(format!("digest not match: {:?}", chunk.digest));
+            // 6. 如果不match，从stable tree中删除
+            BLOBS.with_borrow_mut(|m| {
+                m.remove(&hexed_digest);
+            });
+            return Err(format!(
+                "storage canister: digest not match: {}",
+                hexed_digest
+            ));
+        } else {
+            // 3. notify signature canister to generate confirmation
+            spawn(notify_generate_confirmation(chunk.digest));
+        }
+    }
+
+    // 5. 如果match，再放入stable tree，并且spawn confirmation
+    // 3. insert blob share into the map
+    blob::insert_to_store_map(hexed_digest, chunk.total, &chunk.data);
 
     Ok(())
 }
@@ -136,7 +163,7 @@ async fn notify_generate_confirmation(digest: [u8; 32]) {
     {
         Ok(()) => {}
         Err(e) => {
-            ic_cdk::print(format!("save_blob call signature_canister error: {:?}", e));
+            print(format!("save_blob call signature_canister error: {:?}", e));
         }
     }
 }
@@ -161,4 +188,28 @@ fn check_caller(c: Principal) -> bool {
 
 fn blob_exist(hexed_digest: &String) -> bool {
     BLOBS.with(|m| m.borrow().contains_key(hexed_digest))
+}
+
+fn update_digest(key: &String, slice: &[u8]) {
+    TEMP_DIGEST_STATE.with(|m| match m.borrow_mut().get_mut(key) {
+        Some(digest) => {
+            digest.update(slice);
+        }
+        None => {
+            let mut hasher = Sha256::new();
+            hasher.update(slice);
+            m.borrow_mut().insert(key.clone(), hasher);
+        }
+    });
+}
+
+fn check_digest(key: &String, _digest: &[u8; 32]) -> bool {
+    TEMP_DIGEST_STATE.with(|m| {
+        if let Some(hasher) = m.borrow_mut().remove(key) {
+            let result = hasher.finalize().to_vec();
+            result.eq(_digest)
+        } else {
+            false
+        }
+    })
 }

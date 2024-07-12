@@ -3,11 +3,10 @@
 //! time heap
 //! signature
 
+use crate::BLOBS;
 use candid::{CandidType, Deserialize};
 use ic_cdk::print;
 use serde::Serialize;
-
-use crate::BLOBS;
 
 // upload 用
 #[derive(Deserialize, Serialize, CandidType, Debug, Clone)]
@@ -44,7 +43,11 @@ pub fn insert_to_store_map(hexed_digest: String, total_size: usize, data: &[u8])
 
         let mut value = map.borrow().get(&hexed_digest).unwrap();
         value.extend_from_slice(data);
-        print(format!("save blob of digest: {}", hexed_digest));
+
+        if value.len().eq(&total_size) {
+            print(format!("save blob of digest: {}", hexed_digest));
+        }
+
         let _ = map.borrow_mut().insert(hexed_digest, value);
     })
 }

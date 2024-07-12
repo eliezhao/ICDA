@@ -9,6 +9,7 @@ use std::sync::Arc;
 use candid::Principal;
 use ic_agent::identity::BasicIdentity;
 use ic_agent::Agent;
+use sha2::{Digest, Sha256};
 use tokio::join;
 
 use client::ic_storage::{CANISTER_COLLECTIONS, SIGNATURE_CANISTER};
@@ -159,4 +160,44 @@ async fn main() {
     //     Ok(_) => println!("verify confirmation success"),
     //     Err(e) => eprintln!("verify confirmation failed: {}", e),
     // }
+}
+
+#[test]
+fn t() {
+    // 示例：假设你有以下数据分片
+    let chunks: Vec<Vec<u8>> = vec![
+        vec![1, 2, 3, 4, 5],
+        vec![6, 7, 8, 9, 10],
+        vec![11, 12, 13, 14, 15],
+    ];
+
+    // 创建一个新的哈希计算器
+    let mut hasher = Sha256::new();
+
+    let mut mid = None;
+    // 逐个分片地处理数据
+    for chunk in chunks {
+        // 恢复state
+        if let Some(m) = mid {
+            hasher = m;
+        }
+
+        // 保存最新装填
+        hasher.update(chunk);
+        mid = Some(hasher.clone());
+        hasher = Sha256::new();
+    }
+
+    if let Some(m) = mid {
+        hasher = m;
+    }
+
+    // 完成哈希计算并获取结果
+    let result = hasher.finalize().to_vec();
+
+    let once_digest =
+        sha2::Sha256::digest(&[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]).to_vec();
+    println!("{:?}", result);
+    println!("{:?}", once_digest);
+    assert_eq!(result, once_digest);
 }
