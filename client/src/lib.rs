@@ -1,14 +1,12 @@
-use candid::Principal;
 use futures::future::join_all;
 use rand::Rng;
 use serde_json::json;
-use std::collections::HashSet;
 use tokio::fs;
 use tokio::fs::OpenOptions;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tracing::{error, info, warn};
 
-use crate::ic_storage::{BlobKey, ICStorage, SIGNATURE_CANISTER};
+use crate::ic_storage::{BlobKey, ICStorage};
 use crate::signature::{ConfirmationStatus, SignatureCanisterConfig, VerifyResult};
 use crate::storage::StorageCanisterConfig;
 
@@ -16,6 +14,10 @@ pub mod ic;
 pub mod ic_storage;
 pub mod signature;
 pub mod storage;
+
+const OWNER: &str = "ytoqu-ey42w-sb2ul-m7xgn-oc7xo-i4btp-kuxjc-b6pt4-dwdzu-kfqs4-nae";
+const QUERY_RESPONSE_SIZE: usize = 2621440; // 2.5 * 1024 * 1024 = 2.5 MB
+pub const CANISTER_THRESHOLD: u32 = 30240;
 
 pub async fn get_from_canister(key_path: String, da: &ICStorage) -> anyhow::Result<()> {
     let mut file = OpenOptions::new()
@@ -174,16 +176,18 @@ pub async fn verify_confirmation(key_path: String, da: &ICStorage) -> anyhow::Re
     Ok(())
 }
 
-pub async fn init_canister(da: &ICStorage) -> anyhow::Result<()> {
-    let owner = da.signature_canister.agent.get_principal().unwrap();
+#[derive(serde::Deserialize, serde::Serialize)]
+struct InitConfig {
+    storage_config: Option<StorageCanisterConfig>,
+    signature_config: Option<SignatureCanisterConfig>,
+}
 
-    // update storage canister config:
-    let storage_canister_config = StorageCanisterConfig {
-        owner,
-        signature_canister: Principal::from_text(SIGNATURE_CANISTER).unwrap(),
-        query_response_size: 2621440, // query response size, current 2.5 M
-        canister_storage_threshold: 6, // every 6 blobs => 1 retired
-    };
+pub async fn init_canister(config_path: String, da: &ICStorage) -> anyhow::Result<()> {
+    let content = fs::read_to_string(config_path).await?;
+    let config: InitConfig = toml::from_str(&content)?;
+
+    let storage_canister_config = config.storage_config.unwrap_or_default();
+    let signature_canister_config = config.signature_config.unwrap_or_default();
 
     let mut tasks = Vec::with_capacity(da.storage_canisters_map.len());
     for (_, s) in da.storage_canisters_map.iter() {
@@ -206,14 +210,11 @@ pub async fn init_canister(da: &ICStorage) -> anyhow::Result<()> {
 
     let _ = da.signature_canister.init().await;
 
-    // update signature config: batch confirmation = 1
-    let signature_config = SignatureCanisterConfig {
-        confirmation_batch_size: 6, // 6 blobs => 1 confirmation
-        confirmation_live_time: 1,  // 1 batch 1 expired
-        da_canisters: HashSet::from_iter(da.storage_canisters_map.keys().copied()),
-        owner,
-    };
-    match da.signature_canister.update_config(&signature_config).await {
+    match da
+        .signature_canister
+        .update_config(&signature_canister_config)
+        .await
+    {
         Ok(_) => info!("update signature config success"),
         Err(e) => error!("update signature config failed: {}", e),
     }

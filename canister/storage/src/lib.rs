@@ -122,7 +122,7 @@ async fn save_blob(chunk: BlobChunk) -> Result<(), String> {
 
     // 4. 如果是最后一片，检查是否match
     let received_blob_length =
-        chunk.data.len() + BLOBS.with_borrow(|m| m.get(&hexed_digest).unwrap().len());
+        chunk.data.len() + BLOBS.with_borrow(|m| m.get(&hexed_digest).unwrap_or_default().len());
     if chunk.total.eq(&received_blob_length) {
         if !check_digest(&hexed_digest, &chunk.digest) {
             print(format!("digest not match: {:?}", chunk.digest));
@@ -191,14 +191,14 @@ fn blob_exist(hexed_digest: &String) -> bool {
 }
 
 fn update_digest(key: &String, slice: &[u8]) {
-    TEMP_DIGEST_STATE.with(|m| match m.borrow_mut().get_mut(key) {
+    TEMP_DIGEST_STATE.with_borrow_mut(|m| match m.get_mut(key) {
         Some(digest) => {
             digest.update(slice);
         }
         None => {
             let mut hasher = Sha256::new();
             hasher.update(slice);
-            m.borrow_mut().insert(key.clone(), hasher);
+            m.insert(key.clone(), hasher);
         }
     });
 }

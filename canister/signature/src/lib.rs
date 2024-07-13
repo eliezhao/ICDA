@@ -290,20 +290,15 @@ fn prune_expired_confirmation(current_batch_index: u32) {
             .map(hex::encode)
             .collect::<Vec<_>>();
 
-        // remove batch confirmation
-        print(format!(
-            "remove expired batch index: {}",
-            expired_batch_index
-        ));
         c.remove(&expired_batch_index);
 
         // remove nodes index
         INDEX_MAP.with_borrow_mut(|m| {
             for key in expired_node_keys.iter() {
-                print(format!("remove expired node key: {}", key));
                 m.remove(key);
             }
         });
+        print(format!("remove expired keys: {:?}", expired_node_keys));
     });
 }
 

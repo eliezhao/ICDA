@@ -5,7 +5,7 @@
 extern crate core;
 
 use anyhow::Result;
-use clap::{Parser, ValueEnum};
+use clap::{Parser, Subcommand};
 use tokio::fs;
 use tracing::{info, Level};
 
@@ -13,20 +13,31 @@ use client::ic_storage::ICStorage;
 use client::{get_from_canister, init_canister, put_to_canister, verify_confirmation};
 
 #[derive(Parser)]
+#[command(name = "client")]
 struct Cli {
     #[arg(short, long, default_value = "config.toml")]
     config: String,
 
-    #[arg(short, long)]
-    action: Action,
+    #[command(subcommand)]
+    commands: Commands,
 }
 
-#[derive(serde::Deserialize, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
-enum Action {
+#[derive(Subcommand)]
+enum Commands {
+    #[command(name = "put")]
     Put,
+    #[command(name = "get")]
     Get,
+    #[command(name = "verify")]
     Verify,
-    Init,
+    #[command(name = "init")]
+    Init(InitConfigPath),
+}
+
+#[derive(serde::Deserialize, Clone, PartialEq, Eq, PartialOrd, Ord, Parser)]
+struct InitConfigPath {
+    #[arg(long, short)]
+    path: String,
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
@@ -78,7 +89,7 @@ async fn main() -> Result<()> {
                     config.identity.path,
                     config.batch.batch_number,
                     config.blob_key.path,
-                    cli.action,
+                    cli.commands,
                 )
                 .await;
             }
@@ -92,7 +103,7 @@ async fn main() -> Result<()> {
             config.identity.path,
             config.batch.batch_number,
             config.blob_key.path,
-            cli.action,
+            cli.commands,
         )
         .await;
     }
@@ -104,22 +115,22 @@ async fn talk_to_canister(
     identity_path: String,
     batch_number: usize,
     key_path: String,
-    action: Action,
+    commands: Commands,
 ) {
     let mut da = ICStorage::new(&identity_path).unwrap();
 
-    match action {
-        Action::Put => {
+    match commands {
+        Commands::Put => {
             let _ = put_to_canister(batch_number, key_path, &mut da).await;
         }
-        Action::Get => {
+        Commands::Get => {
             let _ = get_from_canister(key_path, &da).await;
         }
-        Action::Verify => {
+        Commands::Verify => {
             let _ = verify_confirmation(key_path, &da).await;
         }
-        Action::Init => {
-            let _ = init_canister(&da).await;
+        Commands::Init(InitConfigPath { path }) => {
+            let _ = init_canister(path, &da).await;
         }
     }
 }

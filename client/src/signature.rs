@@ -1,6 +1,9 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
+use crate::ic_storage::{
+    CANISTER_COLLECTIONS, COLLECTION_SIZE, CONFIRMATION_BATCH_SIZE, CONFIRMATION_LIVE_TIME,
+};
 use anyhow::{anyhow, Result};
 use candid::{CandidType, Decode, Deserialize, Encode, Principal};
 use ic_agent::Agent;
@@ -37,6 +40,27 @@ pub struct SignatureCanisterConfig {
     pub confirmation_live_time: u32,
     pub da_canisters: HashSet<Principal>,
     pub owner: Principal, // who can change confirmation config
+}
+
+impl Default for SignatureCanisterConfig {
+    fn default() -> Self {
+        let mut da_canisters = HashSet::with_capacity(COLLECTION_SIZE);
+        CANISTER_COLLECTIONS.iter().for_each(|x| {
+            x.iter().for_each(|x| {
+                da_canisters.insert(Principal::from_text(x).unwrap());
+            });
+        });
+
+        Self {
+            confirmation_live_time: CONFIRMATION_LIVE_TIME, // 7 days in batch number
+            confirmation_batch_size: CONFIRMATION_BATCH_SIZE, // 12 blobs per confirmation
+            da_canisters,
+            owner: Principal::from_text(
+                "ytoqu-ey42w-sb2ul-m7xgn-oc7xo-i4btp-kuxjc-b6pt4-dwdzu-kfqs4-nae",
+            )
+            .unwrap(),
+        }
+    }
 }
 
 pub enum VerifyResult {
