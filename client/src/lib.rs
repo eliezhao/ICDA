@@ -178,7 +178,9 @@ pub async fn verify_confirmation(key_path: String, da: &ICStorage) -> anyhow::Re
 
 #[derive(serde::Deserialize, serde::Serialize)]
 struct InitConfig {
+    #[serde(rename = "storage")]
     storage_config: Option<StorageCanisterConfig>,
+    #[serde(rename = "signature")]
     signature_config: Option<SignatureCanisterConfig>,
 }
 
