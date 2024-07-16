@@ -18,6 +18,7 @@ use server::disperser::{
     BlobStatus, BlobStatusReply, BlobStatusRequest, BlobVerificationProof, DisperseBlobReply,
     DisperseBlobRequest, G1Commitment, RetrieveBlobReply, RetrieveBlobRequest,
 };
+use server::ic_storage::ICStorage;
 use server::upload::{ICStorage, LocalStorage, S3Storage, Storage};
 use tonic::transport::Server;
 

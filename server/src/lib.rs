@@ -1,9 +1,20 @@
-use std::time::{SystemTime, UNIX_EPOCH};
-
+use crate::ic_storage::{BlobKey, ICStorage};
+use crate::signature::{ConfirmationStatus, SignatureCanisterConfig, VerifyResult};
+use crate::storage::StorageCanisterConfig;
+use futures::future::join_all;
+use rand::Rng;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use sha2::Digest;
+use std::time::{SystemTime, UNIX_EPOCH};
+use tokio::fs;
+use tokio::fs::OpenOptions;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tracing::{error, info, warn};
 
-pub mod upload;
+pub mod ic_storage;
+pub mod signature;
+pub mod storage;
 
 pub mod disperser {
     #![allow(clippy::all)]
@@ -32,3 +43,7 @@ impl BlobId {
         }
     }
 }
+
+pub const OWNER: &str = "ytoqu-ey42w-sb2ul-m7xgn-oc7xo-i4btp-kuxjc-b6pt4-dwdzu-kfqs4-nae";
+pub const QUERY_RESPONSE_SIZE: usize = 2621440; // 2.5 * 1024 * 1024 = 2.5 MB
+pub const CANISTER_THRESHOLD: u32 = 30240;

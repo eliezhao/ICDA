@@ -22,7 +22,7 @@ ic-management-canister-types = { git = "https://github.com/dfinity/ic.git" }
 icp-ledger = { git = "https://github.com/dfinity/ic.git" }
 cycles-minting-canister = { git = "https://github.com/dfinity/ic.git" }
 secp256k1 = "0.29.0"
-hex = "*"
+hex = "0.4.3"
 sha2 = "0.10.8"
 futures = "0.3"
 backon = "0.4.4"

@@ -6,9 +6,6 @@ edition.workspace = true
 [dependencies]
 anyhow = { version = "1.0.79", features = ["backtrace"] }
 async-trait = "0.1.77"
-aws-config = { version = "1.0.1", features = ["behavior-version-latest"] }
-aws-sdk-s3 = { version = "1.4.0", features = ["rt-tokio"] }
-aws-sdk-sts = "1.17.0"
 clap = { version = "4.4.18", default-features = false, features = ["std", "derive", "help", "usage", "string", "env"] }
 governor = "0.6.0"
 prost = "0.12.3"
@@ -28,6 +25,8 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 futures = "0.3"
 backon = "0.4.4"
+rand = "0.8.5"
+hex = "0.4.3"
 
 [build-dependencies]
 anyhow = { version = "1.0.79", features = ["backtrace"] }
