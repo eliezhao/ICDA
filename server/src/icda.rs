@@ -50,13 +50,13 @@ impl Debug for BlobKey {
 }
 
 #[derive(Clone)]
-pub struct ICStorage {
+pub struct ICDA {
     canister_collection_index: Option<u8>,
     pub storage_canisters_map: HashMap<Principal, StorageCanister>,
     pub signature_canister: SignatureCanister,
 }
 
-impl ICStorage {
+impl ICDA {
     pub fn new(pem_path: &str) -> Result<Self> {
         let identity = BasicIdentity::from_pem_file(pem_path)?;
         let agent = Arc::new(
@@ -110,6 +110,7 @@ impl ICStorage {
                 let cid = sc.canister_id;
                 let res = Self::push_chunks_to_canister(sc, _chunks).await;
                 let _ = _tx.send((cid, res)).await;
+                drop(_tx);
             });
         }
 
@@ -173,6 +174,7 @@ impl ICStorage {
                 let cid = sc.canister_id;
                 let res = Self::get_blob_from_canister(sc, _key).await;
                 let _ = _tx.send((cid, res)).await;
+                drop(_tx);
             });
         }
 
@@ -211,9 +213,24 @@ impl ICStorage {
 
         bail!("ICStorage::get_blob(): failed to get blob")
     }
+
+    pub async fn get_confirmation(
+        sc: &SignatureCanister,
+        digest: [u8; 32],
+    ) -> Result<ConfirmationStatus> {
+        match sc.get_confirmation(digest).await {
+            Ok(confirmation) => Ok(confirmation),
+            Err(e) => {
+                bail!(
+                    "ICStorage::get_confirmation(): failed to get confirmation, error: {}",
+                    e
+                );
+            }
+        }
+    }
 }
 
-impl ICStorage {
+impl ICDA {
     // push chunks to a single canister
     async fn push_chunks_to_canister(
         sc: StorageCanister,
@@ -246,7 +263,7 @@ impl ICStorage {
         }
 
         if blob.is_empty() {
-            bail!("ICStorage::get_blob_from_canisters(): failed to get blob from canisters");
+            bail!("ICStorage::get_blob_from_canisters(): failed to get blob from canisters, blob is empty");
         }
 
         let digest: [u8; 32] = sha2::Sha256::digest(&blob).into();
@@ -255,21 +272,6 @@ impl ICStorage {
         }
 
         Ok(blob)
-    }
-
-    pub async fn get_confirmation(
-        sc: &SignatureCanister,
-        digest: [u8; 32],
-    ) -> Result<ConfirmationStatus> {
-        match sc.get_confirmation(digest).await {
-            Ok(confirmation) => Ok(confirmation),
-            Err(e) => {
-                bail!(
-                    "ICStorage::get_confirmation(): failed to get confirmation, error: {}",
-                    e
-                );
-            }
-        }
     }
 
     // get storage canisters in the current round

@@ -1,7 +1,7 @@
 use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
 
-use crate::ic_storage::SIGNATURE_CANISTER;
+use crate::icda::SIGNATURE_CANISTER;
 use crate::{CANISTER_THRESHOLD, OWNER, QUERY_RESPONSE_SIZE};
 use anyhow::bail;
 use candid::{CandidType, Decode, Deserialize, Encode, Principal};
