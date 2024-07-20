@@ -1,176 +1,217 @@
-use std::fmt::{Debug, Formatter};
-use std::sync::Arc;
+//! Storage backend for the DA server.
 
-use crate::icda::SIGNATURE_CANISTER;
-use crate::{CANISTER_THRESHOLD, OWNER, QUERY_RESPONSE_SIZE};
-use anyhow::bail;
-use candid::{CandidType, Decode, Deserialize, Encode, Principal};
-use ic_agent::Agent;
+use anyhow::{bail, Result};
+use async_trait::async_trait;
+use aws_sdk_s3::Client;
+use candid::Deserialize;
+use redb::{Database, Durability, ReadableTable, TableDefinition as TblDef};
 use serde::Serialize;
+use sha2::Digest;
+use std::time::{SystemTime, UNIX_EPOCH};
 
-const CHUNK_SIZE: usize = 1 << 20; // 1 MB
+/// Key: BlobId in JSON string format
+/// Value: Blob
+const BLOBS: TblDef<&str, Vec<u8>> = TblDef::new("da_server_blobs");
 
-#[derive(Deserialize, Serialize, CandidType, Debug, Clone)]
-pub struct BlobChunk {
+/// Blob identifier.
+#[derive(Serialize, Deserialize, Debug)]
+struct BlobId {
     /// Sha256 digest of the blob in hex format.
-    pub digest: [u8; 32], // hex encoded digest
+    pub(crate) digest: [u8; 32],
 
     /// Time since epoch in nanos.
-    pub timestamp: u128,
-
-    /// blob总大小
-    pub total: usize,
-
-    /// The actual chunk.
-    pub data: Vec<u8>,
+    pub(crate) timestamp: u128,
 }
 
-impl BlobChunk {
-    pub fn generate_chunks(blob: &[u8], digest: [u8; 32], timestamp: u128) -> Vec<BlobChunk> {
-        // split to chunks
-        let data_slice = Self::split_blob_into_chunks(blob);
-        let mut chunks = Vec::with_capacity(data_slice.len());
-        for slice in data_slice.iter() {
-            let chunk = BlobChunk {
-                digest,
-                timestamp,
-                total: blob.len(),
-                data: slice.to_vec(),
-            };
-            chunks.push(chunk);
-        }
-        chunks
-    }
-
-    fn split_blob_into_chunks(blob: &[u8]) -> Vec<Vec<u8>> {
-        let mut chunks = Vec::new();
-        let mut start = 0;
-
-        while start < blob.len() {
-            let end = (start + CHUNK_SIZE).min(blob.len());
-            let chunk = blob[start..end].to_vec();
-            chunks.push(chunk);
-            start += CHUNK_SIZE;
-        }
-
-        chunks
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-pub struct RoutingInfo {
-    pub total_size: usize,
-    pub host_canisters: Vec<Principal>,
-}
-
-impl Debug for RoutingInfo {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("RoutingInfo")
-            .field("total_size", &self.total_size)
-            .field(
-                "host_canisters",
-                &self
-                    .host_canisters
-                    .iter()
-                    .map(|p| p.to_text())
-                    .collect::<Vec<_>>(),
-            )
-            .finish()
-    }
-}
-
-#[derive(CandidType, Deserialize, Serialize, Clone, Default)]
-pub struct Blob {
-    pub data: Vec<u8>,
-    pub next: Option<u64>, // next start index
-}
-
-#[derive(Deserialize, Serialize, CandidType, Clone)]
-pub struct StorageCanisterConfig {
-    pub owner: Principal, // who can upload to da canister
-    pub signature_canister: Principal,
-    pub query_response_size: usize,
-    pub canister_storage_threshold: u32,
-}
-
-impl Default for StorageCanisterConfig {
-    fn default() -> Self {
+impl BlobId {
+    /// Creates the blob id for the blob.
+    fn new(blob: &[u8]) -> Self {
         Self {
-            signature_canister: Principal::from_text(SIGNATURE_CANISTER).unwrap(),
-            query_response_size: QUERY_RESPONSE_SIZE,
-            owner: Principal::from_text(OWNER).unwrap(),
-            canister_storage_threshold: CANISTER_THRESHOLD,
+            digest: sha2::Sha256::digest(blob).into(),
+            timestamp: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("Failed to get timestamp")
+                .as_nanos(),
         }
     }
 }
 
-#[derive(Clone)]
-pub struct StorageCanister {
-    pub agent: Arc<Agent>,
-    pub canister_id: Principal,
+#[async_trait]
+pub trait Storage: Send + Sync {
+    /// Saves the blob.
+    /// Returns the BlobId as bytes.
+    async fn save_blob(&self, blob: Vec<u8>) -> Result<Vec<u8>>;
+
+    /// Retrieves the blob.
+    async fn get_blob(&self, blob_id: Vec<u8>) -> Result<Vec<u8>>;
 }
 
-impl StorageCanister {
-    pub fn new(canister_id: Principal, agent: Arc<Agent>) -> Self {
-        Self { agent, canister_id }
-    }
+/// Storage implementation with S3 as backend.
+pub struct S3Storage {
+    /// Client handle.
+    client: Client,
 
-    pub async fn get_blob(&self, digest: [u8; 32]) -> anyhow::Result<Blob> {
-        let arg = Encode!(&digest)?;
-        let raw_response = self.query_call("get_blob", arg).await?;
-        let response = Decode!(&raw_response, Blob)?;
-        Ok(response)
-    }
+    /// S3 bucket
+    bucket: String,
+}
 
-    pub async fn get_blob_with_index(&self, digest: [u8; 32], index: u64) -> anyhow::Result<Blob> {
-        let arg = Encode!(&digest, &index)?;
-        let raw_response = self.query_call("get_blob_with_index", arg).await?;
-        let response = Decode!(&raw_response, Blob)?;
-        Ok(response)
-    }
-
-    pub async fn save_blob(&self, chunk: &BlobChunk) -> anyhow::Result<()> {
-        let arg = Encode!(&chunk)?;
-        let raw_response = self.update_call("save_blob", arg).await?;
-        let response = Decode!(&raw_response, Result<(), String>)?;
-        if let Err(e) = response {
-            bail!("failed to save blob: {}", e)
+impl S3Storage {
+    ///  Sets up the client interface.
+    pub async fn new(profile: String, bucket: String) -> Self {
+        let config = aws_config::from_env().profile_name(profile).load().await;
+        Self {
+            client: Client::new(&config),
+            bucket,
         }
-        Ok(())
+    }
+}
+
+#[async_trait]
+impl Storage for S3Storage {
+    async fn save_blob(&self, blob: Vec<u8>) -> Result<Vec<u8>> {
+        let blob_id = BlobId::new(&blob);
+        let key = serde_json::to_string(&blob_id)?;
+        tracing::info!(
+            "S3Storage::save_blob(): blob_id = {blob_id:?}, blob_len = {}",
+            blob.len(),
+        );
+        self.client
+            .put_object()
+            .bucket(&self.bucket)
+            .key(&key)
+            .body(blob.into())
+            .send()
+            .await
+            .map(|_| key.as_bytes().to_vec())
+            .map_err(|err| err.into())
     }
 
-    pub async fn notify_generate_confirmation(&self, digest: [u8; 32]) -> anyhow::Result<()> {
-        let arg = Encode!(&digest)?;
-        let _ = self
-            .update_call("notify_generate_confirmation", arg)
+    async fn get_blob(&self, blob_id: Vec<u8>) -> Result<Vec<u8>> {
+        let key = String::from_utf8(blob_id)?;
+        let blob_id: BlobId = serde_json::from_str(&key)?;
+        tracing::info!("S3Storage::get_blob(): blob_id = {blob_id:?}");
+
+        let resp = self
+            .client
+            .get_object()
+            .bucket(&self.bucket)
+            .key(&key)
+            .send()
             .await?;
-        Ok(())
+        let blob = resp.body.collect().await?.to_vec();
+        let digest: [u8; 32] = sha2::Sha256::digest(&blob).into();
+        if blob_id.digest != digest {
+            bail!(
+                "S3Storage: digest mismatch: blob_id.digest = {:?}, actual = {digest:?}",
+                blob_id.digest
+            );
+        }
+        Ok(blob)
+    }
+}
+
+/// Storage implementation with redb backend.
+pub struct LocalStorage {
+    /// The redb database.
+    db: Database,
+}
+
+impl LocalStorage {
+    /// Sets up the DB.
+    pub fn new(db_path: impl AsRef<std::path::Path>) -> Result<Self, redb::Error> {
+        let db = redb::Database::builder().create(db_path)?;
+        let mut tx = db.begin_write()?;
+        let table = tx.open_table(BLOBS)?;
+        drop(table);
+        tx.set_durability(Durability::Immediate);
+        tx.commit()?;
+
+        Ok(Self { db })
+    }
+}
+
+#[async_trait]
+impl Storage for LocalStorage {
+    async fn save_blob(&self, blob: Vec<u8>) -> Result<Vec<u8>> {
+        let blob_id = BlobId::new(&blob);
+        let key = serde_json::to_string(&blob_id)?;
+        tracing::info!(
+            "LocalStorage::save_blob(): blob_id = {blob_id:?}, blob_len = {}",
+            blob.len(),
+        );
+
+        // Insert into the table.
+        let mut tx = self.db.begin_write()?;
+        let mut table = tx.open_table(BLOBS)?;
+        table.insert(key.as_str(), blob)?;
+        drop(table);
+        tx.set_durability(redb::Durability::Immediate);
+        tx.commit()?;
+
+        Ok(key.as_bytes().to_vec())
     }
 
-    pub async fn update_config(&self, config: &StorageCanisterConfig) -> anyhow::Result<()> {
-        let arg = Encode!(&config)?;
-        let _ = self.update_call("update_config", arg).await?;
-        Ok(())
+    async fn get_blob(&self, blob_id: Vec<u8>) -> Result<Vec<u8>> {
+        let key = String::from_utf8(blob_id)?;
+        let blob_id: BlobId = serde_json::from_str(&key)?;
+        tracing::info!("LocalStorage::get_blob(): blob_id = {blob_id:?}");
+
+        // Read from the table.
+        let tx = self.db.begin_read()?;
+        let table = tx.open_table(BLOBS)?;
+        let blob = match table.get(key.as_str())?.map(|blob| blob.value()) {
+            Some(blob) => blob,
+            None => {
+                bail!("LocalStorage::get_blob(): blob not found: {blob_id:?}",);
+            }
+        };
+
+        let digest: [u8; 32] = sha2::Sha256::digest(&blob).into();
+        if blob_id.digest != digest {
+            bail!(
+                "LocalStorage::get_blob(): digest mismatch: blob_id.digest = {:?}, actual = {digest:?}",
+                blob_id.digest
+            );
+        }
+        Ok(blob)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    async fn test_storage(storage: &dyn Storage) {
+        let blob1 = vec![1; 32];
+        let blob_id_1 = storage.save_blob(blob1.clone()).await.unwrap();
+        let ret = storage.get_blob(blob_id_1.clone()).await.unwrap();
+        assert_eq!(ret, blob1);
+
+        let blob2 = vec![3; 64];
+        let blob_id_2 = storage.save_blob(blob2.clone()).await.unwrap();
+        let ret = storage.get_blob(blob_id_2.clone()).await.unwrap();
+        assert_eq!(ret, blob2);
+
+        // Non-existent blob.
+        let blob3 = vec![5; 128];
+        let blob_id_3 = BlobId::new(&blob3);
+        let key = serde_json::to_string(&blob_id_3).unwrap();
+        let key = key.as_bytes().to_vec();
+        assert!(storage.get_blob(key).await.is_err());
     }
 
-    async fn update_call(&self, function_name: &str, args: Vec<u8>) -> anyhow::Result<Vec<u8>> {
-        let raw = self
-            .agent
-            .update(&self.canister_id, function_name)
-            .with_arg(args)
-            .call_and_wait()
-            .await?;
-        Ok(raw)
+    #[tokio::test]
+    async fn test_local_storage() {
+        let tmp_dir = tempfile::tempdir().unwrap();
+        let db_path = tmp_dir.path().join("da_server_blob.db");
+        let storage = LocalStorage::new(db_path).unwrap();
+        test_storage(&storage).await;
     }
 
-    async fn query_call(&self, function_name: &str, args: Vec<u8>) -> anyhow::Result<Vec<u8>> {
-        let res = self
-            .agent
-            .query(&self.canister_id, function_name)
-            .with_arg(args)
-            .call()
-            .await?;
-
-        Ok(res)
+    #[tokio::test]
+    #[ignore = "Needs AWS set up"]
+    async fn test_s3_storage() {
+        let storage = S3Storage::new("test-region".into(), "test-bucket".into()).await;
+        test_storage(&storage).await;
     }
 }

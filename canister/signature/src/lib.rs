@@ -192,12 +192,14 @@ fn update_config(config: Config) {
 #[candid_method]
 async fn init() {
     check_owner(caller());
-    // init public key
-    match init_public_key().await {
-        Ok(key) => {
-            PUBLIC_KEY.with_borrow_mut(|k| *k = key);
+
+    if PUBLIC_KEY.with(|k| k.borrow().is_empty()) {
+        match init_public_key().await {
+            Ok(key) => {
+                PUBLIC_KEY.with(|k| *k.borrow_mut() = key);
+            }
+            Err(e) => print(format!("init public key failed: {}", e)),
         }
-        Err(e) => print(format!("get public key failed: {}", e)),
     }
 }
 

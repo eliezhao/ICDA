@@ -18,8 +18,9 @@ use server::disperser::{
     BlobStatus, BlobStatusReply, BlobStatusRequest, BlobVerificationProof, DisperseBlobReply,
     DisperseBlobRequest, G1Commitment, RetrieveBlobReply, RetrieveBlobRequest,
 };
-use server::ic_storage::ICStorage;
-use server::upload::{ICStorage, LocalStorage, S3Storage, Storage};
+use server::icda::ICDA;
+
+use server::storage::{LocalStorage, S3Storage, Storage};
 use tonic::transport::Server;
 
 #[derive(Debug, Parser)]
@@ -78,17 +79,17 @@ pub struct S3 {
     bucket: String,
 }
 
-/// Params for using a local database for persistence.
-#[derive(Debug, Parser)]
-pub struct Local {
-    #[arg(long)]
-    db_path: PathBuf,
-}
-
 #[derive(Debug, Parser)]
 pub struct IC {
     #[arg(long)]
     pem_path: String,
+}
+
+/// Params for using local database for persistence.
+#[derive(Debug, Parser)]
+pub struct Local {
+    #[arg(long)]
+    db_path: PathBuf,
 }
 
 /// gRPC server implementation.
@@ -211,7 +212,7 @@ async fn main() -> Result<()> {
     let storage: Box<dyn Storage> = match cmd {
         Cmd::S3(S3 { profile, bucket }) => Box::new(S3Storage::new(profile, bucket).await),
         Cmd::Local(Local { db_path }) => Box::new(LocalStorage::new(db_path)?),
-        Cmd::IC(IC { pem_path }) => Box::new(ICStorage::new(pem_path)?),
+        Cmd::IC(IC { pem_path }) => Box::new(ICDA::new(pem_path).await?),
     };
 
     // Save/restore a test blob to ensure the backend is set up.
