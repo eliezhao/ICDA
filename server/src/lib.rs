@@ -1,5 +1,4 @@
-pub mod canister_interface;
-pub mod icda;
+pub mod canister_service;
 pub mod storage;
 pub mod disperser {
     #![allow(clippy::all)]

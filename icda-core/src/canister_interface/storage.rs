@@ -1,7 +1,6 @@
 use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
 
-use crate::icda::{CANISTER_THRESHOLD, OWNER, QUERY_RESPONSE_SIZE, SIGNATURE_CANISTER};
 use anyhow::bail;
 use candid::{CandidType, Decode, Deserialize, Encode, Principal};
 use ic_agent::Agent;
@@ -25,23 +24,24 @@ pub struct BlobChunk {
 }
 
 impl BlobChunk {
-    pub fn generate_chunks(blob: &[u8], digest: [u8; 32], timestamp: u128) -> Vec<BlobChunk> {
+    pub fn generate_chunks(blob: Vec<u8>, digest: [u8; 32], timestamp: u128) -> Vec<BlobChunk> {
         // split to chunks
+        let total = blob.len();
         let data_slice = Self::split_blob_into_chunks(blob);
         let mut chunks = Vec::with_capacity(data_slice.len());
-        for slice in data_slice.iter() {
+        for data in data_slice {
             let chunk = BlobChunk {
                 digest,
                 timestamp,
-                total: blob.len(),
-                data: slice.to_vec(),
+                total,
+                data,
             };
             chunks.push(chunk);
         }
         chunks
     }
 
-    fn split_blob_into_chunks(blob: &[u8]) -> Vec<Vec<u8>> {
+    fn split_blob_into_chunks(blob: Vec<u8>) -> Vec<Vec<u8>> {
         let mut chunks = Vec::new();
         let mut start = 0;
 
@@ -90,17 +90,6 @@ pub struct StorageCanisterConfig {
     pub signature_canister: Principal,
     pub query_response_size: usize,
     pub canister_storage_threshold: u32,
-}
-
-impl Default for StorageCanisterConfig {
-    fn default() -> Self {
-        Self {
-            signature_canister: Principal::from_text(SIGNATURE_CANISTER).unwrap(),
-            query_response_size: QUERY_RESPONSE_SIZE,
-            owner: Principal::from_text(OWNER).unwrap(),
-            canister_storage_threshold: CANISTER_THRESHOLD,
-        }
-    }
 }
 
 #[derive(Clone)]
