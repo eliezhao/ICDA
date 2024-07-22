@@ -4,13 +4,12 @@ use anyhow::{bail, Result};
 use async_trait::async_trait;
 use aws_sdk_s3::Client;
 use candid::Deserialize;
-use icda_core::icda::{BlobKey, BLOB_LIVE_TIME, ICDA, REPLICA_NUM};
+use icda_core::icda::{BlobKey, ICDA};
 use redb::{Database, Durability, ReadableTable, TableDefinition as TblDef};
 use serde::Serialize;
 use sha2::Digest;
-use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
-use tracing::{error, info};
+use tracing::info;
 
 /// Key: BlobId in JSON string format
 /// Value: Blob
@@ -74,7 +73,7 @@ impl Storage for S3Storage {
     async fn save_blob(&self, blob: Vec<u8>) -> Result<Vec<u8>> {
         let blob_id = BlobId::new(&blob);
         let key = serde_json::to_string(&blob_id)?;
-        tracing::info!(
+        info!(
             "S3Storage::save_blob(): blob_id = {blob_id:?}, blob_len = {}",
             blob.len(),
         );
@@ -92,7 +91,7 @@ impl Storage for S3Storage {
     async fn get_blob(&self, blob_id: Vec<u8>) -> Result<Vec<u8>> {
         let key = String::from_utf8(blob_id)?;
         let blob_id: BlobId = serde_json::from_str(&key)?;
-        tracing::info!("S3Storage::get_blob(): blob_id = {blob_id:?}");
+        info!("S3Storage::get_blob(): blob_id = {blob_id:?}");
 
         let resp = self
             .client
@@ -122,7 +121,7 @@ pub struct LocalStorage {
 impl LocalStorage {
     /// Sets up the DB.
     pub fn new(db_path: impl AsRef<std::path::Path>) -> Result<Self, redb::Error> {
-        let db = redb::Database::builder().create(db_path)?;
+        let db = Database::builder().create(db_path)?;
         let mut tx = db.begin_write()?;
         let table = tx.open_table(BLOBS)?;
         drop(table);
@@ -138,7 +137,7 @@ impl Storage for LocalStorage {
     async fn save_blob(&self, blob: Vec<u8>) -> Result<Vec<u8>> {
         let blob_id = BlobId::new(&blob);
         let key = serde_json::to_string(&blob_id)?;
-        tracing::info!(
+        info!(
             "LocalStorage::save_blob(): blob_id = {blob_id:?}, blob_len = {}",
             blob.len(),
         );
@@ -148,7 +147,7 @@ impl Storage for LocalStorage {
         let mut table = tx.open_table(BLOBS)?;
         table.insert(key.as_str(), blob)?;
         drop(table);
-        tx.set_durability(redb::Durability::Immediate);
+        tx.set_durability(Durability::Immediate);
         tx.commit()?;
 
         Ok(key.as_bytes().to_vec())
@@ -157,7 +156,7 @@ impl Storage for LocalStorage {
     async fn get_blob(&self, blob_id: Vec<u8>) -> Result<Vec<u8>> {
         let key = String::from_utf8(blob_id)?;
         let blob_id: BlobId = serde_json::from_str(&key)?;
-        tracing::info!("LocalStorage::get_blob(): blob_id = {blob_id:?}");
+        info!("LocalStorage::get_blob(): blob_id = {blob_id:?}");
 
         // Read from the table.
         let tx = self.db.begin_read()?;

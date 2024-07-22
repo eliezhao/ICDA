@@ -10,11 +10,10 @@ use serde::Serialize;
 use sha2::Digest;
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
-use std::future;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex;
-use tracing::{error, info, warn};
+use tracing::{error, warn};
 
 pub const REPLICA_NUM: usize = 2;
 

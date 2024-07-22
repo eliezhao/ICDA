@@ -100,8 +100,6 @@ struct DAServer {
 
 #[async_trait]
 impl Disperser for DAServer {
-    type DisperseBlobAuthenticatedStream =
-        Pin<Box<dyn tokio_stream::Stream<Item = Result<AuthenticatedReply, tonic::Status>> + Send>>;
     async fn disperse_blob(
         &self,
         request: tonic::Request<DisperseBlobRequest>,
@@ -123,6 +121,16 @@ impl Disperser for DAServer {
                 })
             })
             .map_err(|err| tonic::Status::internal(format!("disperse_blob: {err:?}")))
+    }
+    type DisperseBlobAuthenticatedStream =
+        Pin<Box<dyn tokio_stream::Stream<Item = Result<AuthenticatedReply, tonic::Status>> + Send>>;
+
+    async fn disperse_blob_authenticated(
+        &self,
+        _request: tonic::Request<tonic::Streaming<AuthenticatedRequest>>,
+    ) -> std::result::Result<tonic::Response<Self::DisperseBlobAuthenticatedStream>, tonic::Status>
+    {
+        unimplemented!()
     }
 
     async fn get_blob_status(
@@ -180,14 +188,6 @@ impl Disperser for DAServer {
             .await
             .map(|blob| tonic::Response::new(RetrieveBlobReply { data: blob }))
             .map_err(|err| tonic::Status::internal(format!("retrieve_blob: {err:?}")))
-    }
-
-    async fn disperse_blob_authenticated(
-        &self,
-        _request: tonic::Request<tonic::Streaming<AuthenticatedRequest>>,
-    ) -> std::result::Result<tonic::Response<Self::DisperseBlobAuthenticatedStream>, tonic::Status>
-    {
-        unimplemented!()
     }
 }
 

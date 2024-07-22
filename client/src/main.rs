@@ -117,7 +117,7 @@ async fn talk_to_canister(
     key_path: String,
     commands: Commands,
 ) {
-    let mut da = ICDA::new(identity_path).unwrap();
+    let mut da = ICDA::new(identity_path).await.unwrap();
 
     match commands {
         Commands::Put => {

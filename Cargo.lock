@@ -141,6 +141,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "96d30a06541fbafbc7f82ed10c06164cfbd2c401138f6addd8404629c4b16711"
 
 [[package]]
+name = "assert_matches"
+version = "1.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9b34d609dfbaf33d6889b2b7106d3ca345eacad44200913df5ba02bfd31d2ba9"
+
+[[package]]
 name = "async-lock"
 version = "3.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1296,7 +1302,7 @@ dependencies = [
 [[package]]
 name = "cycles-minting-canister"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#3ea305b03def3d644224dfb6584ac9a5ef29e932"
+source = "git+https://github.com/dfinity/ic.git?rev=4fd4484#4fd4484020819ece99a1ef5b6612c245c7f6b83d"
 dependencies = [
  "async-trait",
  "base64 0.13.1",
@@ -1330,7 +1336,7 @@ dependencies = [
  "rand",
  "serde",
  "serde_cbor",
- "sha2 0.10.8",
+ "sha2 0.9.9",
  "yansi",
 ]
 
@@ -1434,7 +1440,7 @@ dependencies = [
 [[package]]
 name = "dfn_candid"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#3ea305b03def3d644224dfb6584ac9a5ef29e932"
+source = "git+https://github.com/dfinity/ic.git?rev=4fd4484#4fd4484020819ece99a1ef5b6612c245c7f6b83d"
 dependencies = [
  "candid",
  "dfn_core",
@@ -1446,7 +1452,7 @@ dependencies = [
 [[package]]
 name = "dfn_core"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#3ea305b03def3d644224dfb6584ac9a5ef29e932"
+source = "git+https://github.com/dfinity/ic.git?rev=4fd4484#4fd4484020819ece99a1ef5b6612c245c7f6b83d"
 dependencies = [
  "ic-base-types",
  "on_wire",
@@ -1455,7 +1461,7 @@ dependencies = [
 [[package]]
 name = "dfn_http"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#3ea305b03def3d644224dfb6584ac9a5ef29e932"
+source = "git+https://github.com/dfinity/ic.git?rev=4fd4484#4fd4484020819ece99a1ef5b6612c245c7f6b83d"
 dependencies = [
  "candid",
  "dfn_candid",
@@ -1467,7 +1473,7 @@ dependencies = [
 [[package]]
 name = "dfn_http_metrics"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#3ea305b03def3d644224dfb6584ac9a5ef29e932"
+source = "git+https://github.com/dfinity/ic.git?rev=4fd4484#4fd4484020819ece99a1ef5b6612c245c7f6b83d"
 dependencies = [
  "dfn_candid",
  "dfn_core",
@@ -1479,7 +1485,7 @@ dependencies = [
 [[package]]
 name = "dfn_protobuf"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#3ea305b03def3d644224dfb6584ac9a5ef29e932"
+source = "git+https://github.com/dfinity/ic.git?rev=4fd4484#4fd4484020819ece99a1ef5b6612c245c7f6b83d"
 dependencies = [
  "on_wire",
  "prost",
@@ -1490,6 +1496,12 @@ name = "diff"
 version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "56254986775e3233ffa9c4d7d3faaf6d36a2c09d30b20687e9f88bc8bafc16c8"
+
+[[package]]
+name = "difflib"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6184e33543162437515c2e2b48714794e37845ec9851711914eec9d308f6ebe8"
 
 [[package]]
 name = "digest"
@@ -1691,6 +1703,15 @@ checksum = "5f54427cfd1c7829e2a139fcefea601bf088ebca651d2bf53ebc600eac295dae"
 dependencies = [
  "crc32fast",
  "miniz_oxide",
+]
+
+[[package]]
+name = "float-cmp"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "98de4bbd547a563b716d8dfa9aad1cb19bfab00f4fa09a6a4ed21dbcf44ce9c4"
+dependencies = [
+ "num-traits",
 ]
 
 [[package]]
@@ -2224,7 +2245,7 @@ dependencies = [
 [[package]]
 name = "ic-base-types"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#3ea305b03def3d644224dfb6584ac9a5ef29e932"
+source = "git+https://github.com/dfinity/ic.git?rev=4fd4484#4fd4484020819ece99a1ef5b6612c245c7f6b83d"
 dependencies = [
  "byte-unit",
  "bytes",
@@ -2239,9 +2260,8 @@ dependencies = [
 
 [[package]]
 name = "ic-btc-interface"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0152e14e697b0e988dbfdcb3f7e352d1c76a65b7d2d75c5d76bad22c3aca10d"
+version = "0.2.0"
+source = "git+https://github.com/dfinity/bitcoin-canister?rev=62a71e47c491fb842ccc257b1c675651501f4b82#62a71e47c491fb842ccc257b1c675651501f4b82"
 dependencies = [
  "candid",
  "serde",
@@ -2249,9 +2269,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "ic-btc-replica-types"
+name = "ic-btc-types-internal"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#3ea305b03def3d644224dfb6584ac9a5ef29e932"
+source = "git+https://github.com/dfinity/ic.git?rev=4fd4484#4fd4484020819ece99a1ef5b6612c245c7f6b83d"
 dependencies = [
  "candid",
  "ic-btc-interface",
@@ -2264,7 +2284,7 @@ dependencies = [
 [[package]]
 name = "ic-canister-log"
 version = "0.2.0"
-source = "git+https://github.com/dfinity/ic.git#3ea305b03def3d644224dfb6584ac9a5ef29e932"
+source = "git+https://github.com/dfinity/ic.git?rev=4fd4484#4fd4484020819ece99a1ef5b6612c245c7f6b83d"
 dependencies = [
  "serde",
 ]
@@ -2272,7 +2292,7 @@ dependencies = [
 [[package]]
 name = "ic-canisters-http-types"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#3ea305b03def3d644224dfb6584ac9a5ef29e932"
+source = "git+https://github.com/dfinity/ic.git?rev=4fd4484#4fd4484020819ece99a1ef5b6612c245c7f6b83d"
 dependencies = [
  "candid",
  "serde",
@@ -2359,12 +2379,12 @@ dependencies = [
 [[package]]
 name = "ic-constants"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#3ea305b03def3d644224dfb6584ac9a5ef29e932"
+source = "git+https://github.com/dfinity/ic.git?rev=4fd4484#4fd4484020819ece99a1ef5b6612c245c7f6b83d"
 
 [[package]]
 name = "ic-crypto-getrandom-for-wasm"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#3ea305b03def3d644224dfb6584ac9a5ef29e932"
+source = "git+https://github.com/dfinity/ic.git?rev=4fd4484#4fd4484020819ece99a1ef5b6612c245c7f6b83d"
 dependencies = [
  "getrandom",
 ]
@@ -2372,7 +2392,7 @@ dependencies = [
 [[package]]
 name = "ic-crypto-internal-sha2"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#3ea305b03def3d644224dfb6584ac9a5ef29e932"
+source = "git+https://github.com/dfinity/ic.git?rev=4fd4484#4fd4484020819ece99a1ef5b6612c245c7f6b83d"
 dependencies = [
  "sha2 0.10.8",
 ]
@@ -2380,7 +2400,7 @@ dependencies = [
 [[package]]
 name = "ic-crypto-internal-types"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#3ea305b03def3d644224dfb6584ac9a5ef29e932"
+source = "git+https://github.com/dfinity/ic.git?rev=4fd4484#4fd4484020819ece99a1ef5b6612c245c7f6b83d"
 dependencies = [
  "arrayvec 0.7.4",
  "hex",
@@ -2397,7 +2417,7 @@ dependencies = [
 [[package]]
 name = "ic-crypto-sha2"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#3ea305b03def3d644224dfb6584ac9a5ef29e932"
+source = "git+https://github.com/dfinity/ic.git?rev=4fd4484#4fd4484020819ece99a1ef5b6612c245c7f6b83d"
 dependencies = [
  "ic-crypto-internal-sha2",
 ]
@@ -2405,8 +2425,9 @@ dependencies = [
 [[package]]
 name = "ic-crypto-tree-hash"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#3ea305b03def3d644224dfb6584ac9a5ef29e932"
+source = "git+https://github.com/dfinity/ic.git?rev=4fd4484#4fd4484020819ece99a1ef5b6612c245c7f6b83d"
 dependencies = [
+ "assert_matches",
  "ic-crypto-internal-types",
  "ic-crypto-sha2",
  "ic-protobuf",
@@ -2418,7 +2439,7 @@ dependencies = [
 [[package]]
 name = "ic-error-types"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#3ea305b03def3d644224dfb6584ac9a5ef29e932"
+source = "git+https://github.com/dfinity/ic.git?rev=4fd4484#4fd4484020819ece99a1ef5b6612c245c7f6b83d"
 dependencies = [
  "ic-protobuf",
  "ic-utils",
@@ -2430,7 +2451,7 @@ dependencies = [
 [[package]]
 name = "ic-ledger-canister-core"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#3ea305b03def3d644224dfb6584ac9a5ef29e932"
+source = "git+https://github.com/dfinity/ic.git?rev=4fd4484#4fd4484020819ece99a1ef5b6612c245c7f6b83d"
 dependencies = [
  "async-trait",
  "candid",
@@ -2448,7 +2469,7 @@ dependencies = [
 [[package]]
 name = "ic-ledger-core"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#3ea305b03def3d644224dfb6584ac9a5ef29e932"
+source = "git+https://github.com/dfinity/ic.git?rev=4fd4484#4fd4484020819ece99a1ef5b6612c245c7f6b83d"
 dependencies = [
  "candid",
  "ic-ledger-hash-of",
@@ -2460,7 +2481,7 @@ dependencies = [
 [[package]]
 name = "ic-ledger-hash-of"
 version = "0.1.0"
-source = "git+https://github.com/dfinity/ic.git#3ea305b03def3d644224dfb6584ac9a5ef29e932"
+source = "git+https://github.com/dfinity/ic.git?rev=4fd4484#4fd4484020819ece99a1ef5b6612c245c7f6b83d"
 dependencies = [
  "candid",
  "hex",
@@ -2470,15 +2491,14 @@ dependencies = [
 [[package]]
 name = "ic-management-canister-types"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#3ea305b03def3d644224dfb6584ac9a5ef29e932"
+source = "git+https://github.com/dfinity/ic.git?rev=4fd4484#4fd4484020819ece99a1ef5b6612c245c7f6b83d"
 dependencies = [
  "candid",
  "ic-base-types",
  "ic-btc-interface",
- "ic-btc-replica-types",
+ "ic-btc-types-internal",
  "ic-error-types",
  "ic-protobuf",
- "ic-utils",
  "num-traits",
  "serde",
  "serde_bytes",
@@ -2496,7 +2516,7 @@ checksum = "8b5c7628eac357aecda461130f8074468be5aa4d258a002032d82d817f79f1f8"
 [[package]]
 name = "ic-nervous-system-common"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#3ea305b03def3d644224dfb6584ac9a5ef29e932"
+source = "git+https://github.com/dfinity/ic.git?rev=4fd4484#4fd4484020819ece99a1ef5b6612c245c7f6b83d"
 dependencies = [
  "async-trait",
  "base64 0.13.1",
@@ -2532,12 +2552,12 @@ dependencies = [
 [[package]]
 name = "ic-nervous-system-common-build-metadata"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#3ea305b03def3d644224dfb6584ac9a5ef29e932"
+source = "git+https://github.com/dfinity/ic.git?rev=4fd4484#4fd4484020819ece99a1ef5b6612c245c7f6b83d"
 
 [[package]]
 name = "ic-nervous-system-governance"
 version = "0.0.1"
-source = "git+https://github.com/dfinity/ic.git#3ea305b03def3d644224dfb6584ac9a5ef29e932"
+source = "git+https://github.com/dfinity/ic.git?rev=4fd4484#4fd4484020819ece99a1ef5b6612c245c7f6b83d"
 dependencies = [
  "ic-base-types",
  "ic-stable-structures",
@@ -2549,7 +2569,7 @@ dependencies = [
 [[package]]
 name = "ic-nervous-system-runtime"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#3ea305b03def3d644224dfb6584ac9a5ef29e932"
+source = "git+https://github.com/dfinity/ic.git?rev=4fd4484#4fd4484020819ece99a1ef5b6612c245c7f6b83d"
 dependencies = [
  "async-trait",
  "candid",
@@ -2562,7 +2582,7 @@ dependencies = [
 [[package]]
 name = "ic-nns-common"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#3ea305b03def3d644224dfb6584ac9a5ef29e932"
+source = "git+https://github.com/dfinity/ic.git?rev=4fd4484#4fd4484020819ece99a1ef5b6612c245c7f6b83d"
 dependencies = [
  "candid",
  "comparable",
@@ -2582,13 +2602,13 @@ dependencies = [
  "prost",
  "serde",
  "serde_bytes",
- "sha2 0.10.8",
+ "sha2 0.9.9",
 ]
 
 [[package]]
 name = "ic-nns-constants"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#3ea305b03def3d644224dfb6584ac9a5ef29e932"
+source = "git+https://github.com/dfinity/ic.git?rev=4fd4484#4fd4484020819ece99a1ef5b6612c245c7f6b83d"
 dependencies = [
  "ic-base-types",
  "maplit",
@@ -2597,11 +2617,12 @@ dependencies = [
 [[package]]
 name = "ic-protobuf"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#3ea305b03def3d644224dfb6584ac9a5ef29e932"
+source = "git+https://github.com/dfinity/ic.git?rev=4fd4484#4fd4484020819ece99a1ef5b6612c245c7f6b83d"
 dependencies = [
  "bincode",
  "candid",
  "erased-serde",
+ "maplit",
  "prost",
  "serde",
  "serde_json",
@@ -2611,7 +2632,7 @@ dependencies = [
 [[package]]
 name = "ic-registry-keys"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#3ea305b03def3d644224dfb6584ac9a5ef29e932"
+source = "git+https://github.com/dfinity/ic.git?rev=4fd4484#4fd4484020819ece99a1ef5b6612c245c7f6b83d"
 dependencies = [
  "candid",
  "ic-base-types",
@@ -2623,7 +2644,7 @@ dependencies = [
 [[package]]
 name = "ic-registry-transport"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#3ea305b03def3d644224dfb6584ac9a5ef29e932"
+source = "git+https://github.com/dfinity/ic.git?rev=4fd4484#4fd4484020819ece99a1ef5b6612c245c7f6b83d"
 dependencies = [
  "candid",
  "ic-base-types",
@@ -2661,7 +2682,7 @@ dependencies = [
 [[package]]
 name = "ic-types"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#3ea305b03def3d644224dfb6584ac9a5ef29e932"
+source = "git+https://github.com/dfinity/ic.git?rev=4fd4484#4fd4484020819ece99a1ef5b6612c245c7f6b83d"
 dependencies = [
  "base64 0.13.1",
  "bincode",
@@ -2669,7 +2690,7 @@ dependencies = [
  "chrono",
  "hex",
  "ic-base-types",
- "ic-btc-replica-types",
+ "ic-btc-types-internal",
  "ic-constants",
  "ic-crypto-internal-types",
  "ic-crypto-sha2",
@@ -2696,9 +2717,10 @@ dependencies = [
 [[package]]
 name = "ic-utils"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#3ea305b03def3d644224dfb6584ac9a5ef29e932"
+source = "git+https://github.com/dfinity/ic.git?rev=4fd4484#4fd4484020819ece99a1ef5b6612c245c7f6b83d"
 dependencies = [
  "hex",
+ "prost",
  "scoped_threadpool",
  "serde",
  "serde_bytes",
@@ -2773,7 +2795,7 @@ dependencies = [
 [[package]]
 name = "icp-ledger"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#3ea305b03def3d644224dfb6584ac9a5ef29e932"
+source = "git+https://github.com/dfinity/ic.git?rev=4fd4484#4fd4484020819ece99a1ef5b6612c245c7f6b83d"
 dependencies = [
  "candid",
  "comparable",
@@ -2793,6 +2815,7 @@ dependencies = [
  "num-traits",
  "on_wire",
  "prost",
+ "prost-derive",
  "serde",
  "serde_bytes",
  "serde_cbor",
@@ -2803,7 +2826,7 @@ dependencies = [
 [[package]]
 name = "icrc-ledger-types"
 version = "0.1.5"
-source = "git+https://github.com/dfinity/ic.git#3ea305b03def3d644224dfb6584ac9a5ef29e932"
+source = "git+https://github.com/dfinity/ic.git?rev=4fd4484#4fd4484020819ece99a1ef5b6612c245c7f6b83d"
 dependencies = [
  "base32",
  "candid",
@@ -2815,8 +2838,6 @@ dependencies = [
  "serde",
  "serde_bytes",
  "sha2 0.10.8",
- "strum",
- "time",
 ]
 
 [[package]]
@@ -2875,6 +2896,15 @@ name = "is_terminal_polyfill"
 version = "1.70.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8478577c03552c21db0e2724ffb8986a5ce7af88107e6be5d2ee6e158c12800"
+
+[[package]]
+name = "itertools"
+version = "0.10.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b0fd2260e829bddf4cb6ea802289de2f86d6a7a690192fbe91b3f46e0f2c8473"
+dependencies = [
+ "either",
+]
 
 [[package]]
 name = "itertools"
@@ -3065,9 +3095,9 @@ dependencies = [
 
 [[package]]
 name = "mockall"
-version = "0.12.1"
+version = "0.11.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43766c2b5203b10de348ffe19f7e54564b64f3d6018ff7648d1e2d6d3a0f0a48"
+checksum = "4c84490118f2ee2d74570d114f3d0493cbf02790df303d2707606c3e14e07c96"
 dependencies = [
  "cfg-if",
  "downcast",
@@ -3080,14 +3110,14 @@ dependencies = [
 
 [[package]]
 name = "mockall_derive"
-version = "0.12.1"
+version = "0.11.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af7cbce79ec385a1d4f54baa90a76401eb15d9cab93685f62e7e9f942aa00ae2"
+checksum = "22ce75669015c4f47b289fd4d4f56e894e4c96003ffdf3ac51313126f94c6cbb"
 dependencies = [
  "cfg-if",
  "proc-macro2",
  "quote",
- "syn 2.0.72",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -3107,6 +3137,12 @@ name = "nonzero_ext"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "38bf9645c8b145698bb0b18a4637dcacbc421ea49bef2317e4fd8065a387cf21"
+
+[[package]]
+name = "normalize-line-endings"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "61807f77802ff30975e01f4f071c8ba10c022052f98b3294119f3e615d13e5be"
 
 [[package]]
 name = "nu-ansi-term"
@@ -3176,7 +3212,7 @@ dependencies = [
 [[package]]
 name = "on_wire"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#3ea305b03def3d644224dfb6584ac9a5ef29e932"
+source = "git+https://github.com/dfinity/ic.git?rev=4fd4484#4fd4484020819ece99a1ef5b6612c245c7f6b83d"
 
 [[package]]
 name = "once_cell"
@@ -3358,7 +3394,7 @@ dependencies = [
 [[package]]
 name = "phantom_newtype"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic.git#3ea305b03def3d644224dfb6584ac9a5ef29e932"
+source = "git+https://github.com/dfinity/ic.git?rev=4fd4484#4fd4484020819ece99a1ef5b6612c245c7f6b83d"
 dependencies = [
  "candid",
  "serde",
@@ -3443,12 +3479,16 @@ checksum = "5b40af805b3121feab8a3c29f04d8ad262fa8e0561883e7653e024ae4479e6de"
 
 [[package]]
 name = "predicates"
-version = "3.1.0"
+version = "2.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68b87bfd4605926cdfefc1c3b5f8fe560e3feca9d5552cf68c466d3d8236c7e8"
+checksum = "59230a63c37f3e18569bdb90e4a89cbf5bf8b06fea0b84e65ea10cc4df47addd"
 dependencies = [
- "anstyle",
+ "difflib",
+ "float-cmp",
+ "itertools 0.10.5",
+ "normalize-line-endings",
  "predicates-core",
+ "regex",
 ]
 
 [[package]]
@@ -3567,9 +3607,9 @@ dependencies = [
 
 [[package]]
 name = "prost"
-version = "0.12.2"
+version = "0.12.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a5a410fc7882af66deb8d01d01737353cf3ad6204c408177ba494291a626312"
+checksum = "deb1435c188b76130da55f17a466d252ff7b1418b2ad3e037d127b94e3411f29"
 dependencies = [
  "bytes",
  "prost-derive",

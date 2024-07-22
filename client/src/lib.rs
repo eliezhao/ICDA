@@ -13,8 +13,6 @@ use tracing::{error, info, warn};
 
 pub mod ic;
 
-const OWNER: &str = "ytoqu-ey42w-sb2ul-m7xgn-oc7xo-i4btp-kuxjc-b6pt4-dwdzu-kfqs4-nae";
-const QUERY_RESPONSE_SIZE: usize = 2621440; // 2.5 * 1024 * 1024 = 2.5 MB
 pub const CANISTER_THRESHOLD: u32 = 30240;
 
 pub async fn get_from_canister(key_path: String, da: &ICDA) -> anyhow::Result<()> {
@@ -35,7 +33,7 @@ pub async fn get_from_canister(key_path: String, da: &ICDA) -> anyhow::Result<()
 
     for key in keys.iter() {
         tasks.push(async move {
-            match da.get_blob(key.clone()).await {
+            match da.get_blob_from_canisters(key.clone()).await {
                 Ok(_) => {
                     info!("get from canister success, blob key: \n{:?}", key);
                 }
@@ -66,10 +64,8 @@ pub async fn put_to_canister(
 
     for (index, item) in batch.iter().enumerate() {
         info!("Batch Index: {}", index);
-        let res = da.save_blob(item.to_vec()).await?;
-        let raw = String::from_utf8(res).unwrap();
-        let key = serde_json::from_str::<BlobKey>(&raw).unwrap();
-        keys.push(key)
+        let res = da.push_blob_to_canisters(item.to_vec()).await?;
+        keys.push(res)
     }
 
     let content = fs::read_to_string(&key_path).await.unwrap_or_default();
