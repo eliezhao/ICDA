@@ -16,11 +16,11 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { version = "1", features = ["full"] }
 anyhow = "1"
-ic-types = { git = "https://github.com/dfinity/ic.git" }
-icrc-ledger-types = { git = "https://github.com/dfinity/ic.git" }
-ic-management-canister-types = { git = "https://github.com/dfinity/ic.git" }
-icp-ledger = { git = "https://github.com/dfinity/ic.git" }
-cycles-minting-canister = { git = "https://github.com/dfinity/ic.git" }
+ic-types = { git = "https://github.com/dfinity/ic.git", commit = "4fd4484020819ece99a1ef5b6612c245c7f6b83d" }
+icrc-ledger-types = { git = "https://github.com/dfinity/ic.git", commit = "4fd4484020819ece99a1ef5b6612c245c7f6b83d" }
+ic-management-canister-types = { git = "https://github.com/dfinity/ic.git", commit = "4fd4484020819ece99a1ef5b6612c245c7f6b83d" }
+icp-ledger = { git = "https://github.com/dfinity/ic.git", commit = "4fd4484020819ece99a1ef5b6612c245c7f6b83d" }
+cycles-minting-canister = { git = "https://github.com/dfinity/ic.git", commit = "4fd4484020819ece99a1ef5b6612c245c7f6b83d" }
 secp256k1 = "0.29.0"
 hex = "0.4.3"
 sha2 = "0.10.8"
@@ -33,4 +33,4 @@ tracing-subscriber = "0.3"
 clap = { version = "4.5.7", features = ["derive"] }
 rs_merkle = { workspace = true }
 toml = "*"
-icda_core = { path = "../icda-core" }
+icda-core = { path = "../icda-core" }

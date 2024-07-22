@@ -9,8 +9,8 @@ use clap::{Parser, Subcommand};
 use tokio::fs;
 use tracing::{info, Level};
 
-use client::ic_storage::ICStorage;
 use client::{get_from_canister, init_canister, put_to_canister, verify_confirmation};
+use icda_core::icda::ICDA;
 
 #[derive(Parser)]
 #[command(name = "client")]
@@ -117,7 +117,7 @@ async fn talk_to_canister(
     key_path: String,
     commands: Commands,
 ) {
-    let mut da = ICStorage::new(&identity_path).unwrap();
+    let mut da = ICDA::new(identity_path).unwrap();
 
     match commands {
         Commands::Put => {

@@ -1,6 +1,7 @@
 use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
 
+use crate::icda::{CANISTER_THRESHOLD, DEFAULT_OWNER, QUERY_RESPONSE_SIZE, SIGNATURE_CANISTER};
 use anyhow::bail;
 use candid::{CandidType, Decode, Deserialize, Encode, Principal};
 use ic_agent::Agent;
@@ -90,6 +91,17 @@ pub struct StorageCanisterConfig {
     pub signature_canister: Principal,
     pub query_response_size: usize,
     pub canister_storage_threshold: u32,
+}
+
+impl Default for StorageCanisterConfig {
+    fn default() -> Self {
+        Self {
+            owner: Principal::from_text(DEFAULT_OWNER).unwrap(),
+            signature_canister: Principal::from_text(SIGNATURE_CANISTER).unwrap(),
+            query_response_size: QUERY_RESPONSE_SIZE,
+            canister_storage_threshold: CANISTER_THRESHOLD,
+        }
+    }
 }
 
 #[derive(Clone)]

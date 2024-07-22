@@ -33,6 +33,9 @@ pub const CONFIRMATION_LIVE_TIME: u32 = 60 * 60 * 24 * 7 + 1; // 1 week in nanos
 pub const QUERY_RESPONSE_SIZE: usize = 2621440; // 2.5 * 1024 * 1024 = 2.5 MB
 pub const CANISTER_THRESHOLD: u32 = 30240;
 
+pub(crate) const DEFAULT_OWNER: &str =
+    "ytoqu-ey42w-sb2ul-m7xgn-oc7xo-i4btp-kuxjc-b6pt4-dwdzu-kfqs4-nae";
+
 #[derive(Serialize, Deserialize, Clone, Default)]
 pub struct BlobKey {
     pub digest: [u8; 32],

@@ -131,7 +131,7 @@ pub async fn create_canister_in_specific_subnet(
 
     let settings = Some(
         CanisterSettingsArgsBuilder::new()
-            .with_controller(pid)
+            .with_controllers(vec![pid])
             .with_log_visibility(LogVisibility::Controllers)
             .with_freezing_threshold(14 * 24 * 60 * 60) // 14 days
             .build(),

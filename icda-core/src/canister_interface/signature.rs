@@ -3,10 +3,15 @@ use std::sync::Arc;
 
 use crate::icda::{
     CANISTER_COLLECTIONS, COLLECTION_SIZE, CONFIRMATION_BATCH_SIZE, CONFIRMATION_LIVE_TIME,
+    DEFAULT_OWNER,
 };
 use anyhow::{anyhow, Result};
 use candid::{CandidType, Decode, Deserialize, Encode, Principal};
 use ic_agent::Agent;
+use rs_merkle::algorithms::Sha256;
+use rs_merkle::MerkleProof;
+use secp256k1::ecdsa::Signature;
+use secp256k1::{Message, PublicKey, Secp256k1};
 use serde::Serialize;
 
 #[derive(CandidType, Deserialize, Serialize, Clone, Debug)]
@@ -51,10 +56,7 @@ impl Default for SignatureCanisterConfig {
             confirmation_live_time: CONFIRMATION_LIVE_TIME, // 7 days in batch number
             confirmation_batch_size: CONFIRMATION_BATCH_SIZE, // 12 blobs per confirmation
             da_canisters,
-            owner: Principal::from_text(
-                "ytoqu-ey42w-sb2ul-m7xgn-oc7xo-i4btp-kuxjc-b6pt4-dwdzu-kfqs4-nae",
-            )
-            .unwrap(),
+            owner: Principal::from_text(DEFAULT_OWNER).unwrap(),
         }
     }
 }
@@ -113,6 +115,40 @@ impl SignatureCanister {
             .await?;
         let confirmation = Decode!(&res, ConfirmationStatus)?;
         Ok(confirmation)
+    }
+
+    pub async fn verify_confirmation(&self, confirmation: &Confirmation) -> VerifyResult {
+        let public_key = self.public_key().await.expect("failed to get public key");
+
+        // verify signature
+        let compact_sig =
+            hex::decode(confirmation.signature.clone()).expect("failed to decode signature");
+        let sig = Signature::from_compact(&compact_sig).expect("failed to parse signature");
+        let msg = Message::from_digest_slice(confirmation.root.as_ref())
+            .expect("failed to parse message");
+        let pubkey = PublicKey::from_slice(&public_key).expect("failed to parse public key");
+        let secp = Secp256k1::new();
+
+        match secp.verify_ecdsa(&msg, &sig, &pubkey) {
+            Ok(_) => {
+                // verify merkle proof
+                let merkle_proof =
+                    MerkleProof::<Sha256>::try_from(confirmation.proof.proof_bytes.as_slice())
+                        .expect("failed to parse merkle proof");
+
+                if merkle_proof.verify(
+                    confirmation.root,
+                    &[confirmation.proof.leaf_index],
+                    &[confirmation.proof.leaf_digest],
+                    6,
+                ) {
+                    VerifyResult::Valid
+                } else {
+                    VerifyResult::InvalidProof
+                }
+            }
+            Err(e) => VerifyResult::InvalidSignature(e.to_string()),
+        }
     }
 
     pub async fn init(&self) -> Result<()> {

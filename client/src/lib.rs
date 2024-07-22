@@ -1,4 +1,9 @@
 use futures::future::join_all;
+use icda_core::canister_interface::signature::{
+    ConfirmationStatus, SignatureCanisterConfig, VerifyResult,
+};
+use icda_core::canister_interface::storage::StorageCanisterConfig;
+use icda_core::icda::{BlobKey, ICDA};
 use rand::Rng;
 use serde_json::json;
 use tokio::fs;
@@ -12,7 +17,7 @@ const OWNER: &str = "ytoqu-ey42w-sb2ul-m7xgn-oc7xo-i4btp-kuxjc-b6pt4-dwdzu-kfqs4
 const QUERY_RESPONSE_SIZE: usize = 2621440; // 2.5 * 1024 * 1024 = 2.5 MB
 pub const CANISTER_THRESHOLD: u32 = 30240;
 
-pub async fn get_from_canister(key_path: String, da: &ICStorage) -> anyhow::Result<()> {
+pub async fn get_from_canister(key_path: String, da: &ICDA) -> anyhow::Result<()> {
     let mut file = OpenOptions::new()
         .read(true)
         .open(key_path)
@@ -47,7 +52,7 @@ pub async fn get_from_canister(key_path: String, da: &ICStorage) -> anyhow::Resu
 pub async fn put_to_canister(
     batch_number: usize,
     key_path: String,
-    da: &mut ICStorage,
+    da: &mut ICDA,
 ) -> anyhow::Result<()> {
     let mut rng = rand::thread_rng();
 
@@ -98,7 +103,7 @@ pub async fn put_to_canister(
     Ok(())
 }
 
-pub async fn verify_confirmation(key_path: String, da: &ICStorage) -> anyhow::Result<()> {
+pub async fn verify_confirmation(key_path: String, da: &ICDA) -> anyhow::Result<()> {
     let mut file = OpenOptions::new()
         .read(true)
         .open(key_path)
@@ -177,7 +182,7 @@ struct InitConfig {
     signature_config: Option<SignatureCanisterConfig>,
 }
 
-pub async fn init_canister(config_path: String, da: &ICStorage) -> anyhow::Result<()> {
+pub async fn init_canister(config_path: String, da: &ICDA) -> anyhow::Result<()> {
     let content = fs::read_to_string(config_path).await?;
     let config: InitConfig = toml::from_str(&content)?;
 
