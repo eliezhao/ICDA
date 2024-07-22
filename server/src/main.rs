@@ -18,8 +18,8 @@ use server::disperser::{
     BlobStatus, BlobStatusReply, BlobStatusRequest, BlobVerificationProof, DisperseBlobReply,
     DisperseBlobRequest, G1Commitment, RetrieveBlobReply, RetrieveBlobRequest,
 };
-use server::icda::ICDA;
 
+use icda_core::icda::ICDA;
 use server::storage::{LocalStorage, S3Storage, Storage};
 use tonic::transport::Server;
 

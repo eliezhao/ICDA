@@ -56,7 +56,7 @@ impl BlobChunk {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Default)]
 pub struct RoutingInfo {
     pub total_size: usize,
     pub host_canisters: Vec<Principal>,

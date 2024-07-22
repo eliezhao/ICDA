@@ -1,11 +1,10 @@
 //! Storage backend for the DA server.
 
-use crate::canister_interface::ic_storage::{BlobChunk, RoutingInfo};
-use crate::icda::{BlobKey, BLOB_LIVE_TIME, ICDA, REPLICA_NUM};
 use anyhow::{bail, Result};
 use async_trait::async_trait;
 use aws_sdk_s3::Client;
 use candid::Deserialize;
+use icda_core::icda::{BlobKey, BLOB_LIVE_TIME, ICDA, REPLICA_NUM};
 use redb::{Database, Durability, ReadableTable, TableDefinition as TblDef};
 use serde::Serialize;
 use sha2::Digest;
@@ -184,136 +183,16 @@ impl Storage for LocalStorage {
 #[async_trait]
 impl Storage for ICDA {
     async fn save_blob(&self, blob: Vec<u8>) -> Result<Vec<u8>> {
-        let blob_digest: [u8; 32] = sha2::Sha256::digest(&blob).into();
+        let blob_key = self.push_blob_to_canisters(blob).await?;
 
-        let timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("Failed to get timestamp")
-            .as_nanos();
-
-        let blob_chunks = Arc::new(BlobChunk::generate_chunks(&blob, blob_digest, timestamp));
-
-        let storage_canisters = self.get_storage_canisters().await;
-        let routing_canisters = storage_canisters
-            .iter()
-            .map(|sc| sc.canister_id)
-            .collect::<Vec<_>>();
-
-        let (tx, mut rx) = tokio::sync::mpsc::channel(REPLICA_NUM);
-        for sc in storage_canisters {
-            let _chunks = blob_chunks.clone();
-            let _tx = tx.clone();
-            tokio::spawn(async move {
-                let cid = sc.canister_id;
-                let res = Self::push_chunks_to_canister(sc, _chunks).await;
-                let _ = _tx.send((cid, res)).await;
-                drop(_tx);
-            });
-        }
-
-        for _ in 0..REPLICA_NUM {
-            if let Some((cid, Err(e))) = rx.recv().await {
-                error!(
-                    "ICDA::save_blob_chunk(): cid = {}, error: {:?}",
-                    cid.to_text(),
-                    e
-                );
-            }
-        }
-
-        rx.close();
-
-        let blob_key = BlobKey {
-            digest: blob_digest,
-            expiry_timestamp: timestamp + BLOB_LIVE_TIME,
-            routing_info: RoutingInfo {
-                total_size: blob.len(),
-                host_canisters: routing_canisters,
-            },
-        };
-
-        let key = serde_json::to_string(&blob_key)?;
-        Ok(key.as_bytes().to_vec())
+        let key = serde_json::to_vec(&blob_key)?;
+        Ok(key)
     }
 
     // ATTENTION: the blob id type is BlobKey
     async fn get_blob(&self, blob_id: Vec<u8>) -> Result<Vec<u8>> {
         let key = serde_json::from_slice::<BlobKey>(&blob_id)?;
-
-        // inspect expiry timestamp
-        let current_timestamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos();
-
-        if key.expiry_timestamp < current_timestamp {
-            bail!(
-                "ICDA::get_blob(): expired: key.expiry_timestamp = {:?}, current_timestamp = {:?}",
-                key.expiry_timestamp,
-                current_timestamp
-            );
-        }
-
-        let storage_canisters = key
-            .routing_info
-            .host_canisters
-            .iter()
-            .map(|cid| {
-                self.storage_canisters_map
-                    .get(cid)
-                    .expect("Failed to get storage canister")
-                    .clone()
-            })
-            .collect::<Vec<_>>();
-
-        // get from canisters
-        let (tx, mut rx) = tokio::sync::mpsc::channel(REPLICA_NUM);
-        for sc in storage_canisters {
-            let _tx = tx.clone();
-            let _key = key.clone();
-            let fut = async move {
-                let cid = sc.canister_id;
-                let res = Self::get_blob_from_canister(sc, _key).await;
-                match res {
-                    Ok(blob) => {
-                        let digest: [u8; 32] = sha2::Sha256::digest(&blob).into();
-                        if digest.eq(&key.digest) {
-                            info!("ICDA::get_blob(): get blob successfully, digest match",);
-                            let _ = _tx.send(blob).await;
-                        } else {
-                            error!("ICDA::get_blob(): blob digest not match, key digest:{:?},get blob digest{:?}", key.digest, digest);
-                        }
-                    }
-                    Err(e) => {
-                        error!("ICDA::get_blob(): cid: {}, error: {:?}", cid.to_text(), e);
-                    }
-                }
-                drop(_tx);
-            };
-            tokio::spawn(fut);
-        }
-
-        loop {
-            tokio::select! {
-                msg = rx.recv() => {
-                    match msg {
-                        Some(blob) => {
-                            return Ok(blob);
-                        },
-                        None => {
-                            // No more senders and no message received
-                            error!("All senders are closed and no more messages.");
-                            break;
-                        }
-                    }
-                },
-                _ = tokio::time::sleep(std::time::Duration::from_secs(1)) => {
-                    if rx.is_closed() {
-                        error!("All senders are closed and no messages received.");
-                        break;
-                    }
-                }
-            }
-        }
-
-        bail!("ICDA::get_blob(): failed to get blob")
+        self.get_blob_from_canisters(key).await
     }
 }
 

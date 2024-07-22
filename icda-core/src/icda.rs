@@ -10,6 +10,7 @@ use serde::Serialize;
 use sha2::Digest;
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
+use std::future;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex;
@@ -32,7 +33,7 @@ pub const CONFIRMATION_LIVE_TIME: u32 = 60 * 60 * 24 * 7 + 1; // 1 week in nanos
 pub const QUERY_RESPONSE_SIZE: usize = 2621440; // 2.5 * 1024 * 1024 = 2.5 MB
 pub const CANISTER_THRESHOLD: u32 = 30240;
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Default)]
 pub struct BlobKey {
     pub digest: [u8; 32],
     pub expiry_timestamp: u128, // current system time + live time

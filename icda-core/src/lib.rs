@@ -1,2 +1,2 @@
-mod canister_interface;
+pub mod canister_interface;
 pub mod icda;

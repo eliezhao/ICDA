@@ -1,5 +1,5 @@
 [package]
-name = "core"
+name = "icda-core"
 version.workspace = true
 edition.workspace = true
 repository.workspace = true

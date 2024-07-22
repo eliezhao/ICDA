@@ -23,7 +23,7 @@ ic-agent = { workspace = true }
 candid = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-core = { workspace = true }
+icda-core = { path = "../icda-core" }
 futures = "0.3"
 backon = "0.4.4"
 rand = "0.8.5"
