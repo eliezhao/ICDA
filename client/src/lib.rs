@@ -54,8 +54,7 @@ pub async fn put_to_canister(
 ) -> anyhow::Result<()> {
     let mut rng = rand::thread_rng();
 
-    //准备4个blob
-    let mut batch = vec![vec![0u8; 3 * 1024 * 1024]; batch_number]; // 10个3M
+    let mut batch = vec![vec![0u8; 2 * 1024 * 1024]; batch_number];
     for i in &mut batch {
         rng.fill(&mut i[..]);
     }

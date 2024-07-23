@@ -3,7 +3,7 @@
 //! time heap
 //! signature
 
-use crate::BLOBS;
+use crate::{BLOBS, DACONFIG};
 use candid::{CandidType, Deserialize};
 use ic_cdk::print;
 use serde::Serialize;
@@ -11,6 +11,9 @@ use serde::Serialize;
 // upload 用
 #[derive(Deserialize, Serialize, CandidType, Debug, Clone)]
 pub struct BlobChunk {
+    /// index of the chunk.
+    pub index: usize,
+
     /// Sha256 digest of the blob in hex format.
     pub digest: [u8; 32],
 
@@ -32,17 +35,19 @@ pub struct Blob {
 
 // 1. 第一次上传，则创建一个空的vec，大小为total
 // 2. 之后的上传，将chunk append到vec中
-pub fn insert_to_store_map(hexed_digest: String, total_size: usize, data: &[u8]) {
+pub fn insert_to_store_map(hexed_digest: String, index: usize, total_size: usize, data: &[u8]) {
     BLOBS.with(|map| {
-        // 获取map中有无key - value
-        if map.borrow().get(&hexed_digest).is_none() {
-            // 没有，就insert，同时将vec的大小控制为总大小
-            let value: Vec<u8> = Vec::with_capacity(total_size);
-            map.borrow_mut().insert(hexed_digest.clone(), value);
-        }
+        let mut value = map
+            .borrow()
+            .get(&hexed_digest)
+            .unwrap_or_else(|| Vec::with_capacity(total_size));
 
-        let mut value = map.borrow().get(&hexed_digest).unwrap();
-        value.extend_from_slice(data);
+        let chunk_size = DACONFIG.with_borrow(|c| c.chunk_size);
+
+        let start = index * chunk_size;
+        let end = (start + chunk_size).min(total_size);
+
+        value[start..end].copy_from_slice(data);
 
         if value.len().eq(&total_size) {
             print(format!("save blob of digest: {}", hexed_digest));

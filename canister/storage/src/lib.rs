@@ -118,7 +118,7 @@ async fn save_blob(chunk: BlobChunk) -> Result<(), String> {
     }
 
     // 2. 更新digest state
-    update_digest(&hexed_digest, &chunk.data);
+    update_digest(&hexed_digest, chunk.index, &chunk.data);
 
     // 4. 如果是最后一片，检查是否match
     let received_blob_length =
@@ -142,7 +142,7 @@ async fn save_blob(chunk: BlobChunk) -> Result<(), String> {
 
     // 5. 如果match，再放入stable tree，并且spawn confirmation
     // 3. insert blob share into the map
-    blob::insert_to_store_map(hexed_digest, chunk.total, &chunk.data);
+    blob::insert_to_store_map(hexed_digest, chunk.index, chunk.total, &chunk.data);
 
     Ok(())
 }
@@ -190,7 +190,13 @@ fn blob_exist(hexed_digest: &String) -> bool {
     BLOBS.with(|m| m.borrow().contains_key(hexed_digest))
 }
 
-fn update_digest(key: &String, slice: &[u8]) {
+fn update_digest(key: &String, index: usize, slice: &[u8]) {
+    // 检查是否存储过
+    let chunk_size = DACONFIG.with_borrow(|c| c.chunk_size);
+    if BLOBS.with_borrow(|m| m.get(key).unwrap().len()) > index * chunk_size {
+        return;
+    }
+
     TEMP_DIGEST_STATE.with_borrow_mut(|m| match m.get_mut(key) {
         Some(digest) => {
             digest.update(slice);

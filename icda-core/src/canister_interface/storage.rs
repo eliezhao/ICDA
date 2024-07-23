@@ -11,6 +11,9 @@ const CHUNK_SIZE: usize = 1 << 20; // 1 MB
 
 #[derive(Deserialize, Serialize, CandidType, Debug, Clone)]
 pub struct BlobChunk {
+    /// index of the chunk
+    pub index: usize,
+
     /// Sha256 digest of the blob in hex format.
     pub digest: [u8; 32], // hex encoded digest
 
@@ -20,7 +23,7 @@ pub struct BlobChunk {
     /// blob总大小
     pub total: usize,
 
-    /// The actual chunk.
+    /// chunk slice of total blob.
     pub data: Vec<u8>,
 }
 
@@ -30,12 +33,13 @@ impl BlobChunk {
         let total = blob.len();
         let data_slice = Self::split_blob_into_chunks(blob);
         let mut chunks = Vec::with_capacity(data_slice.len());
-        for data in data_slice {
+        for (index, slice) in data_slice.iter().enumerate() {
             let chunk = BlobChunk {
+                index,
                 digest,
                 timestamp,
                 total,
-                data,
+                data: slice.to_owned(),
             };
             chunks.push(chunk);
         }

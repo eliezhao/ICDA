@@ -4,6 +4,7 @@ use std::str::FromStr;
 use anyhow::bail;
 use candid::{Decode, Encode, Nat, Principal};
 use cycles_minting_canister::{NotifyCreateCanister, NotifyError, SubnetSelection};
+use ic_agent::identity::BasicIdentity;
 use ic_agent::Agent;
 use ic_management_canister_types::{CanisterSettingsArgsBuilder, LogVisibility};
 use ic_types::{CanisterId, PrincipalId, SubnetId};
@@ -14,9 +15,21 @@ use icrc_ledger_types::icrc1::transfer::TransferError;
 pub const LEDGER: &str = "ryjl3-tyaaa-aaaaa-aaaba-cai";
 pub const CMC: &str = "rkp4c-7iaaa-aaaaa-aaaca-cai";
 
-// todo : 选10个合适的subnet，至少120G可用stable memory
-pub const SUBNETS: [&str; 10] =
-    ["opn46-zyspe-hhmyp-4zu6u-7sbrh-dok77-m7dch-im62f-vyimr-a3n2c-4ae"; 10];
+pub const SUBNETS: [&str; 10] = [
+    "opn46-zyspe-hhmyp-4zu6u-7sbrh-dok77-m7dch-im62f-vyimr-a3n2c-4ae",
+    "w4asl-4nmyj-qnr7c-6cqq4-tkwmt-o26di-iupkq-vx4kt-asbrx-jzuxh-4ae",
+    "snjp4-xlbw4-mnbog-ddwy6-6ckfd-2w5a2-eipqo-7l436-pxqkh-l6fuv-vae",
+    "4zbus-z2bmt-ilreg-xakz4-6tyre-hsqj4-slb4g-zjwqo-snjcc-iqphi-3qe",
+    "brlsh-zidhj-3yy3e-6vqbz-7xnih-xeq2l-as5oc-g32c4-i5pdn-2wwof-oae",
+    "csyj4-zmann-ys6ge-3kzi6-onexi-obayx-2fvak-zersm-euci4-6pslt-lae",
+    "ejbmu-grnam-gk6ol-6irwa-htwoj-7ihfl-goimw-hlnvh-abms4-47v2e-zqe",
+    "fuqsr-in2lc-zbcjj-ydmcw-pzq7h-4xm2z-pto4i-dcyee-5z4rz-x63ji-nae",
+    "io67a-2jmkw-zup3h-snbwi-g6a5n-rm5dn-b6png-lvdpl-nqnto-yih6l-gqe", // 1st
+    "nl6hn-ja4yw-wvmpy-3z2jx-ymc34-pisx3-3cp5z-3oj4a-qzzny-jbsv3-4qe", // 2st
+];
+
+// "io67a-2jmkw-zup3h-snbwi-g6a5n-rm5dn-b6png-lvdpl-nqnto-yih6l-gqe", // 1st
+// "nl6hn-ja4yw-wvmpy-3z2jx-ymc34-pisx3-3cp5z-3oj4a-qzzny-jbsv3-4qe", // 2st
 
 #[derive(Clone)]
 pub struct LedgerAgent {
@@ -106,7 +119,7 @@ pub async fn get_account_balance(agent: Agent, ledger: LedgerAgent) -> anyhow::R
     println!(
         "\
         Principal: {},\n
-        Account ID: {:?},\n 
+        Account ID: {:?},\n
         Balance: {:?}",
         agent.get_principal().unwrap(),
         account_id.to_string(),
@@ -182,4 +195,9 @@ pub fn sha256(input: &String) -> [u8; 32] {
     let mut hasher = sha2::Sha256::new();
     hasher.update(input.as_bytes());
     hasher.finalize().into()
+}
+
+#[test]
+fn create() {
+    let identity = BasicIdentity::from_pem_file("../identity/identity.pem").unwrap();
 }
