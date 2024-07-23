@@ -200,4 +200,11 @@ pub fn sha256(input: &String) -> [u8; 32] {
 #[test]
 fn create() {
     let identity = BasicIdentity::from_pem_file("../identity/identity.pem").unwrap();
+    let agent = Agent::builder()
+        .with_identity(identity)
+        .with_url("https://ic0.app")
+        .build()
+        .unwrap();
+    let ledger = LedgerAgent::new(agent.clone());
+    let cmc = CmcAgent::new(agent.clone());
 }
