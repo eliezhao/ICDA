@@ -193,7 +193,7 @@ fn blob_exist(hexed_digest: &String) -> bool {
 fn update_digest(key: &String, index: usize, slice: &[u8]) {
     // 检查是否存储过
     let chunk_size = DACONFIG.with_borrow(|c| c.chunk_size);
-    if BLOBS.with_borrow(|m| m.get(key).unwrap().len()) > index * chunk_size {
+    if BLOBS.with_borrow(|m| m.get(key).unwrap_or_default().len()) > index * chunk_size {
         return;
     }
 

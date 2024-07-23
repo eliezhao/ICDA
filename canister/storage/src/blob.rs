@@ -37,10 +37,11 @@ pub struct Blob {
 // 2. 之后的上传，将chunk append到vec中
 pub fn insert_to_store_map(hexed_digest: String, index: usize, total_size: usize, data: &[u8]) {
     BLOBS.with(|map| {
-        let mut value = map
-            .borrow()
-            .get(&hexed_digest)
-            .unwrap_or_else(|| Vec::with_capacity(total_size));
+        let mut value = map.borrow().get(&hexed_digest).unwrap_or_else(|| {
+            let mut v = Vec::with_capacity(total_size);
+            v.resize(total_size, 0);
+            v
+        });
 
         let chunk_size = DACONFIG.with_borrow(|c| c.chunk_size);
 
