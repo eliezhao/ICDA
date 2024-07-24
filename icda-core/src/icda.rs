@@ -1,10 +1,10 @@
+use crate::canister_interface::rr_agent::RoundRobinAgent;
 use crate::canister_interface::signature::{ConfirmationStatus, SignatureCanister};
 use crate::canister_interface::storage::{BlobChunk, RoutingInfo, StorageCanister};
 use anyhow::bail;
 use anyhow::Result;
 use candid::{Deserialize, Principal};
 use ic_agent::identity::BasicIdentity;
-use ic_agent::Agent;
 use rand::random;
 use serde::Serialize;
 use sha2::Digest;
@@ -69,13 +69,8 @@ pub struct ICDA {
 impl ICDA {
     pub async fn new(pem_path: String) -> Result<Self> {
         let identity = BasicIdentity::from_pem_file(pem_path)?;
-        let agent = Arc::new(
-            Agent::builder()
-                .with_url("https://ic0.app")
-                .with_identity(identity)
-                .build()
-                .unwrap(),
-        );
+
+        let agent = Arc::new(RoundRobinAgent::new(identity));
 
         let mut storage_canisters_map = HashMap::new();
         for storage_cid in CANISTER_COLLECTIONS.iter().flat_map(|x| x.iter()) {

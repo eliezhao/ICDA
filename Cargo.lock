@@ -4408,7 +4408,6 @@ dependencies = [
  "futures",
  "governor",
  "hex",
- "ic-agent",
  "icda-core",
  "prost",
  "rand",

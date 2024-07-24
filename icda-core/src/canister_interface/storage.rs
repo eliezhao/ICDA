@@ -1,10 +1,10 @@
 use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
 
+use crate::canister_interface::rr_agent::RoundRobinAgent;
 use crate::icda::{CANISTER_THRESHOLD, DEFAULT_OWNER, QUERY_RESPONSE_SIZE, SIGNATURE_CANISTER};
 use anyhow::bail;
 use candid::{CandidType, Decode, Deserialize, Encode, Principal};
-use ic_agent::Agent;
 use serde::Serialize;
 
 const CHUNK_SIZE: usize = 1 << 20; // 1 MB
@@ -110,32 +110,41 @@ impl Default for StorageCanisterConfig {
 
 #[derive(Clone)]
 pub struct StorageCanister {
-    pub agent: Arc<Agent>,
+    pub agent: Arc<RoundRobinAgent>,
     pub canister_id: Principal,
 }
 
 impl StorageCanister {
-    pub fn new(canister_id: Principal, agent: Arc<Agent>) -> Self {
+    pub fn new(canister_id: Principal, agent: Arc<RoundRobinAgent>) -> Self {
         Self { agent, canister_id }
     }
 
     pub async fn get_blob(&self, digest: [u8; 32]) -> anyhow::Result<Blob> {
         let arg = Encode!(&digest)?;
-        let raw_response = self.query_call("get_blob", arg).await?;
+        let raw_response = self
+            .agent
+            .query_call(&self.canister_id, "get_blob", arg)
+            .await?;
         let response = Decode!(&raw_response, Blob)?;
         Ok(response)
     }
 
     pub async fn get_blob_with_index(&self, digest: [u8; 32], index: u64) -> anyhow::Result<Blob> {
         let arg = Encode!(&digest, &index)?;
-        let raw_response = self.query_call("get_blob_with_index", arg).await?;
+        let raw_response = self
+            .agent
+            .query_call(&self.canister_id, "get_blob_with_index", arg)
+            .await?;
         let response = Decode!(&raw_response, Blob)?;
         Ok(response)
     }
 
     pub async fn save_blob(&self, chunk: &BlobChunk) -> anyhow::Result<()> {
         let arg = Encode!(&chunk)?;
-        let raw_response = self.update_call("save_blob", arg).await?;
+        let raw_response = self
+            .agent
+            .update_call(&self.canister_id, "save_blob", arg)
+            .await?;
         let response = Decode!(&raw_response, Result<(), String>)?;
         if let Err(e) = response {
             bail!("failed to save blob: {}", e)
@@ -146,35 +155,18 @@ impl StorageCanister {
     pub async fn notify_generate_confirmation(&self, digest: [u8; 32]) -> anyhow::Result<()> {
         let arg = Encode!(&digest)?;
         let _ = self
-            .update_call("notify_generate_confirmation", arg)
+            .agent
+            .update_call(&self.canister_id, "notify_generate_confirmation", arg)
             .await?;
         Ok(())
     }
 
     pub async fn update_config(&self, config: &StorageCanisterConfig) -> anyhow::Result<()> {
         let arg = Encode!(&config)?;
-        let _ = self.update_call("update_config", arg).await?;
+        let _ = self
+            .agent
+            .update_call(&self.canister_id, "update_config", arg)
+            .await?;
         Ok(())
-    }
-
-    async fn update_call(&self, function_name: &str, args: Vec<u8>) -> anyhow::Result<Vec<u8>> {
-        let raw = self
-            .agent
-            .update(&self.canister_id, function_name)
-            .with_arg(args)
-            .call_and_wait()
-            .await?;
-        Ok(raw)
-    }
-
-    async fn query_call(&self, function_name: &str, args: Vec<u8>) -> anyhow::Result<Vec<u8>> {
-        let res = self
-            .agent
-            .query(&self.canister_id, function_name)
-            .with_arg(args)
-            .call()
-            .await?;
-
-        Ok(res)
     }
 }

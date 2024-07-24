@@ -1,13 +1,13 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
+use crate::canister_interface::rr_agent::RoundRobinAgent;
 use crate::icda::{
     CANISTER_COLLECTIONS, COLLECTION_SIZE, CONFIRMATION_BATCH_SIZE, CONFIRMATION_LIVE_TIME,
     DEFAULT_OWNER,
 };
 use anyhow::{anyhow, Result};
 use candid::{CandidType, Decode, Deserialize, Encode, Principal};
-use ic_agent::Agent;
 use rs_merkle::algorithms::Sha256;
 use rs_merkle::MerkleProof;
 use secp256k1::ecdsa::Signature;
@@ -70,11 +70,11 @@ pub enum VerifyResult {
 #[derive(Clone)]
 pub struct SignatureCanister {
     pub canister_id: Principal,
-    pub agent: Arc<Agent>,
+    pub agent: Arc<RoundRobinAgent>,
 }
 
 impl SignatureCanister {
-    pub fn new(canister_id: Principal, agent: Arc<Agent>) -> Self {
+    pub fn new(canister_id: Principal, agent: Arc<RoundRobinAgent>) -> Self {
         Self { canister_id, agent }
     }
 
@@ -82,9 +82,7 @@ impl SignatureCanister {
         let arg = Encode!(config).unwrap();
         let _ = self
             .agent
-            .update(&self.canister_id, "update_config")
-            .with_arg(arg)
-            .call_and_wait()
+            .update_call(&self.canister_id, "update_config", arg)
             .await?;
         Ok(())
     }
@@ -92,9 +90,7 @@ impl SignatureCanister {
     pub async fn public_key(&self) -> Result<Vec<u8>> {
         let raw = self
             .agent
-            .query(&self.canister_id, "get_public_key")
-            .with_arg(Encode!().unwrap())
-            .call()
+            .query_call(&self.canister_id, "get_public_key", Encode!().unwrap())
             .await?;
         let res = Decode!(&raw, Vec<u8>)?;
 
@@ -109,9 +105,7 @@ impl SignatureCanister {
         let arg = Encode!(&digest)?;
         let res = self
             .agent
-            .update(&self.canister_id, "get_confirmation")
-            .with_arg(arg)
-            .call_and_wait()
+            .update_call(&self.canister_id, "get_confirmation", arg)
             .await?;
         let confirmation = Decode!(&res, ConfirmationStatus)?;
         Ok(confirmation)
@@ -154,9 +148,7 @@ impl SignatureCanister {
     pub async fn init(&self) -> Result<()> {
         let _ = self
             .agent
-            .update(&self.canister_id, "init")
-            .with_arg(Encode!().unwrap())
-            .call_and_wait()
+            .update_call(&self.canister_id, "init", Encode!().unwrap())
             .await?;
         Ok(())
     }
