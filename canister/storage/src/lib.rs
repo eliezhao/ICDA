@@ -1,3 +1,5 @@
+extern crate core;
+
 use crate::blob::{remove_expired_blob_from_map, Blob, BlobChunk};
 use crate::config::Config;
 use crate::time_heap::{insert_to_time_heap, BlobId};
@@ -6,19 +8,15 @@ use ic_cdk::{caller, print, spawn};
 use ic_cdk_macros::*;
 use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
 use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap, StableMinHeap};
-use sha2::digest::core_api::{CoreWrapper, CtVariableCoreWrapper};
-use sha2::digest::typenum::U32;
+
 use sha2::{Digest, Sha256};
-use sha2::{OidSha256, Sha256VarCore};
 use std::cell::RefCell;
-use std::collections::BTreeMap;
 
 mod blob;
 mod config;
 mod time_heap;
 
 type Memory = VirtualMemory<DefaultMemoryImpl>;
-type Hasher = CoreWrapper<CtVariableCoreWrapper<Sha256VarCore, U32, OidSha256>>;
 
 thread_local! {
 
@@ -44,8 +42,6 @@ thread_local! {
             MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(1))),
         ).unwrap()
     );
-
-    static TEMP_DIGEST_STATE: RefCell<BTreeMap<String, Hasher>> = const { RefCell::new(BTreeMap::new()) };
 }
 
 // Retrieves the value associated with the given key if it exists.
@@ -117,10 +113,6 @@ async fn save_blob(chunk: BlobChunk) -> Result<(), String> {
         }
     }
 
-    // 2. 更新digest state
-    update_digest(&hexed_digest, chunk.index, &chunk.data);
-
-    // 5. 如果match，再放入stable tree，并且spawn confirmation
     // 3. insert blob share into the map
     if blob::insert_to_store_map(&hexed_digest, chunk.index, chunk.total, &chunk.data) {
         if !check_digest(&hexed_digest, &chunk.digest) {
@@ -130,10 +122,11 @@ async fn save_blob(chunk: BlobChunk) -> Result<(), String> {
                 m.remove(&hexed_digest);
             });
             return Err(format!(
-                "storage canister: digest not match: {}",
-                hexed_digest
+                "storage canister: digest not match: chunk index: {}, {}",
+                chunk.index, hexed_digest
             ));
         } else {
+            // 5. 如果match，再放入stable tree，并且spawn confirmation
             print(format!("saved blob, digest: {:?}", hexed_digest));
             // 3. notify signature canister to generate confirmation
             spawn(notify_generate_confirmation(chunk.digest));
@@ -186,32 +179,7 @@ fn blob_exist(hexed_digest: &String) -> bool {
     BLOBS.with(|m| m.borrow().contains_key(hexed_digest))
 }
 
-fn update_digest(key: &String, index: usize, slice: &[u8]) {
-    // 检查是否存储过
-    let chunk_size = DACONFIG.with_borrow(|c| c.chunk_size);
-    if BLOBS.with_borrow(|m| m.get(key).unwrap_or_default().len()) > index * chunk_size {
-        return;
-    }
-
-    TEMP_DIGEST_STATE.with_borrow_mut(|m| match m.get_mut(key) {
-        Some(digest) => {
-            digest.update(slice);
-        }
-        None => {
-            let mut hasher = Sha256::new();
-            hasher.update(slice);
-            m.insert(key.clone(), hasher);
-        }
-    });
-}
-
 fn check_digest(key: &String, _digest: &[u8; 32]) -> bool {
-    TEMP_DIGEST_STATE.with(|m| {
-        if let Some(hasher) = m.borrow_mut().remove(key) {
-            let result = hasher.finalize().to_vec();
-            result.eq(_digest)
-        } else {
-            false
-        }
-    })
+    let blob = BLOBS.with(|m| m.borrow().get(key).unwrap_or_default());
+    Sha256::digest(blob).as_slice().eq(_digest)
 }

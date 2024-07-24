@@ -16,11 +16,19 @@ use tokio::sync::Mutex;
 use tracing::{error, info, warn};
 
 pub const REPLICA_NUM: usize = 1;
-
 pub const COLLECTION_SIZE: usize = 11;
+// 1 week in nanos
+pub const BLOB_LIVE_TIME: u128 = 7 * 24 * 60 * 60 * 1_000_000_000;
+pub const CONFIRMATION_BATCH_SIZE: u64 = 12;
+pub const CONFIRMATION_LIVE_TIME: u32 = 60 * 60 * 24 * 7 + 1; // 1 week in nanos
+pub const QUERY_RESPONSE_SIZE: usize = 2621440; // 2.5 * 1024 * 1024 = 2.5 MB
+pub const CANISTER_THRESHOLD: u32 = 30240;
+pub const SIGNATURE_CANISTER: &str = "r34pn-oaaaa-aaaak-qinga-cai";
+pub(crate) const DEFAULT_OWNER: &str =
+    "ytoqu-ey42w-sb2ul-m7xgn-oc7xo-i4btp-kuxjc-b6pt4-dwdzu-kfqs4-nae";
 
 // canister collections
-pub const CANISTER_COLLECTIONS: [[&str; 1]; COLLECTION_SIZE] = [
+pub const CANISTER_COLLECTIONS: [[&str; REPLICA_NUM]; COLLECTION_SIZE] = [
     ["hxctj-oiaaa-aaaap-qhltq-cai"], // nl6hn-ja4yw-wvmpy-3z2jx-ymc34-pisx3-3cp5z-3oj4a-qzzny-jbsv3-4qe
     ["v3y75-6iaaa-aaaak-qikaa-cai"], // opn46-zyspe-hhmyp-4zu6u-7sbrh-dok77-m7dch-im62f-vyimr-a3n2c-4ae
     ["nnw5b-eqaaa-aaaak-qiqaq-cai"], // opn46-zyspe-hhmyp-4zu6u-7sbrh-dok77-m7dch-im62f-vyimr-a3n2c-4ae
@@ -33,18 +41,6 @@ pub const CANISTER_COLLECTIONS: [[&str; 1]; COLLECTION_SIZE] = [
     ["oyfj2-gaaaa-aaaak-akxdq-cai"], // k44fs-gm4pv-afozh-rs7zw-cg32n-u7xov-xqyx3-2pw5q-eucnu-cosd4-uqe
     ["r2xtu-uiaaa-aaaag-alf6q-cai"], // lspz2-jx4pu-k3e7p-znm7j-q4yum-ork6e-6w4q6-pijwq-znehu-4jabe-kqe
 ];
-
-pub const SIGNATURE_CANISTER: &str = "r34pn-oaaaa-aaaak-qinga-cai";
-
-// 1 week in nanos
-pub const BLOB_LIVE_TIME: u128 = 7 * 24 * 60 * 60 * 1_000_000_000;
-pub const CONFIRMATION_BATCH_SIZE: u64 = 12;
-pub const CONFIRMATION_LIVE_TIME: u32 = 60 * 60 * 24 * 7 + 1; // 1 week in nanos
-pub const QUERY_RESPONSE_SIZE: usize = 2621440; // 2.5 * 1024 * 1024 = 2.5 MB
-pub const CANISTER_THRESHOLD: u32 = 30240;
-
-pub(crate) const DEFAULT_OWNER: &str =
-    "ytoqu-ey42w-sb2ul-m7xgn-oc7xo-i4btp-kuxjc-b6pt4-dwdzu-kfqs4-nae";
 
 #[derive(Serialize, Deserialize, Clone, Default)]
 pub struct BlobKey {
@@ -65,7 +61,7 @@ impl Debug for BlobKey {
 
 #[derive(Clone)]
 pub struct ICDA {
-    canister_collection_index: Arc<Mutex<u8>>,
+    canister_collection_index: Arc<Mutex<usize>>,
     pub storage_canisters_map: HashMap<Principal, StorageCanister>,
     pub signature_canister: SignatureCanister,
 }
@@ -101,7 +97,7 @@ impl ICDA {
             ),
         }
 
-        let canister_collection_index = Arc::new(Mutex::new(random::<u8>() % 20));
+        let canister_collection_index = Arc::new(Mutex::new(random::<usize>() % COLLECTION_SIZE));
 
         Ok(Self {
             canister_collection_index,
@@ -321,10 +317,10 @@ impl ICDA {
         let cids;
         {
             let mut index = self.canister_collection_index.lock().await;
-            cids = CANISTER_COLLECTIONS.get(*index as usize).unwrap();
+            cids = CANISTER_COLLECTIONS.get(*index).unwrap();
 
             *index += 1;
-            *index %= 20;
+            *index %= COLLECTION_SIZE;
         }
 
         let storage_canisters = cids
