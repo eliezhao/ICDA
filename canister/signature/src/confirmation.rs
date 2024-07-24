@@ -65,14 +65,10 @@ impl Debug for BatchConfirmation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("BatchConfirmation")
             .field("signature", &self.signature)
-            .field("root", &hex::encode(&self.root))
+            .field("root", &hex::encode(self.root))
             .field(
                 "nodes",
-                &self
-                    .nodes
-                    .iter()
-                    .map(|x| hex::encode(x))
-                    .collect::<Vec<_>>(),
+                &self.nodes.iter().map(hex::encode).collect::<Vec<_>>(),
             )
             .finish()
     }

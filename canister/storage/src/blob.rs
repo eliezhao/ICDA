@@ -42,11 +42,10 @@ pub fn insert_to_store_map(
     data: &[u8],
 ) -> bool {
     BLOBS.with(|map| {
-        let mut value = map.borrow().get(&hexed_digest).unwrap_or_else(|| {
-            let mut v = Vec::with_capacity(total_size);
-            v.resize(total_size, 0);
-            v
-        });
+        let mut value = map
+            .borrow()
+            .get(hexed_digest)
+            .unwrap_or_else(|| vec![0; total_size]);
 
         let chunk_size = DACONFIG.with_borrow(|c| c.chunk_size);
 

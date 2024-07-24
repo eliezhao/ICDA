@@ -4,7 +4,6 @@ use std::str::FromStr;
 use anyhow::bail;
 use candid::{Decode, Encode, Nat, Principal};
 use cycles_minting_canister::{NotifyCreateCanister, NotifyError, SubnetSelection};
-use ic_agent::identity::BasicIdentity;
 use ic_agent::Agent;
 use ic_management_canister_types::{CanisterSettingsArgsBuilder, LogVisibility};
 use ic_types::{CanisterId, PrincipalId, SubnetId};
@@ -198,6 +197,7 @@ pub fn sha256(input: &String) -> [u8; 32] {
 
 #[tokio::test]
 async fn create() {
+    use ic_agent::identity::BasicIdentity;
     let identity = BasicIdentity::from_pem_file("../identity/identity.pem").unwrap();
     let agent = Agent::builder()
         .with_identity(identity)

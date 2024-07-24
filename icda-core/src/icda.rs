@@ -15,7 +15,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex;
 use tracing::{error, warn};
 
-pub const REPLICA_NUM: usize = 2;
+pub const REPLICA_NUM: usize = 1;
 
 pub const COLLECTION_SIZE: usize = 11;
 
@@ -339,4 +339,19 @@ impl ICDA {
 
         storage_canisters
     }
+}
+
+#[tokio::test]
+async fn test_icda() {
+    let icda = ICDA::new("../identity/identity.pem".to_string())
+        .await
+        .unwrap();
+
+    let blob = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
+
+    let blob_key = icda.push_blob_to_canisters(blob.clone()).await.unwrap();
+
+    let blob2 = icda.get_blob_from_canisters(blob_key).await.unwrap();
+
+    assert_eq!(blob, blob2);
 }
