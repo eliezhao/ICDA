@@ -1,5 +1,10 @@
 {
   "canisters": {
+    "signature": {
+      "candid": "signature/signature.did",
+      "package": "signature",
+      "type": "rust"
+    },
     "storage_1": {
       "candid": "storage/storage.did",
       "package": "storage",
@@ -10,9 +15,49 @@
       "package": "storage",
       "type": "rust"
     },
-    "signature": {
-      "candid": "signature/signature.did",
-      "package": "signature",
+    "storage_3": {
+      "candid": "storage/storage.did",
+      "package": "storage",
+      "type": "rust"
+    },
+    "storage_4": {
+      "candid": "storage/storage.did",
+      "package": "storage",
+      "type": "rust"
+    },
+    "storage_5": {
+      "candid": "storage/storage.did",
+      "package": "storage",
+      "type": "rust"
+    },
+    "storage_6": {
+      "candid": "storage/storage.did",
+      "package": "storage",
+      "type": "rust"
+    },
+    "storage_7": {
+      "candid": "storage/storage.did",
+      "package": "storage",
+      "type": "rust"
+    },
+    "storage_8": {
+      "candid": "storage/storage.did",
+      "package": "storage",
+      "type": "rust"
+    },
+    "storage_9": {
+      "candid": "storage/storage.did",
+      "package": "storage",
+      "type": "rust"
+    },
+    "storage_10": {
+      "candid": "storage/storage.did",
+      "package": "storage",
+      "type": "rust"
+    },
+    "storage_11": {
+      "candid": "storage/storage.did",
+      "package": "storage",
       "type": "rust"
     }
   },

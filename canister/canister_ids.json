@@ -1,11 +1,38 @@
 {
+  "signature": {
+    "ic": "r34pn-oaaaa-aaaak-qinga-cai"
+  },
   "storage_1": {
     "ic": "hxctj-oiaaa-aaaap-qhltq-cai"
   },
   "storage_2": {
     "ic": "v3y75-6iaaa-aaaak-qikaa-cai"
   },
-  "signature": {
-    "ic": "r34pn-oaaaa-aaaak-qinga-cai"
+  "storage_3": {
+    "ic": "nnw5b-eqaaa-aaaak-qiqaq-cai"
+  },
+  "storage_4": {
+    "ic": "wcrzb-2qaaa-aaaap-qhpgq-cai"
+  },
+  "storage_5": {
+    "ic": "y446g-jiaaa-aaaap-ahpja-cai"
+  },
+  "storage_6": {
+    "ic": "hmqa7-byaaa-aaaam-ac4aq-cai"
+  },
+  "storage_7": {
+    "ic": "jeizw-6yaaa-aaaal-ajora-cai"
+  },
+  "storage_8": {
+    "ic": "vrk5x-dyaaa-aaaan-qmrsq-cai"
+  },
+  "storage_9": {
+    "ic": "zhu6y-liaaa-aaaal-qjlmq-cai"
+  },
+  "storage_10": {
+    "ic": "oyfj2-gaaaa-aaaak-akxdq-cai"
+  },
+  "storage_11": {
+    "ic": "r2xtu-uiaaa-aaaag-alf6q-cai"
   }
 }

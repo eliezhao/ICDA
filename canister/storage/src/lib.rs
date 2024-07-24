@@ -120,10 +120,9 @@ async fn save_blob(chunk: BlobChunk) -> Result<(), String> {
     // 2. 更新digest state
     update_digest(&hexed_digest, chunk.index, &chunk.data);
 
-    // 4. 如果是最后一片，检查是否match
-    let received_blob_length =
-        chunk.data.len() + BLOBS.with_borrow(|m| m.get(&hexed_digest).unwrap_or_default().len());
-    if chunk.total.eq(&received_blob_length) {
+    // 5. 如果match，再放入stable tree，并且spawn confirmation
+    // 3. insert blob share into the map
+    if blob::insert_to_store_map(&hexed_digest, chunk.index, chunk.total, &chunk.data) {
         if !check_digest(&hexed_digest, &chunk.digest) {
             print(format!("digest not match: {:?}", chunk.digest));
             // 6. 如果不match，从stable tree中删除
@@ -135,14 +134,11 @@ async fn save_blob(chunk: BlobChunk) -> Result<(), String> {
                 hexed_digest
             ));
         } else {
+            print(format!("saved blob, digest: {:?}", hexed_digest));
             // 3. notify signature canister to generate confirmation
             spawn(notify_generate_confirmation(chunk.digest));
         }
-    }
-
-    // 5. 如果match，再放入stable tree，并且spawn confirmation
-    // 3. insert blob share into the map
-    blob::insert_to_store_map(hexed_digest, chunk.index, chunk.total, &chunk.data);
+    };
 
     Ok(())
 }

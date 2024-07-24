@@ -15,17 +15,16 @@ use icrc_ledger_types::icrc1::transfer::TransferError;
 pub const LEDGER: &str = "ryjl3-tyaaa-aaaaa-aaaba-cai";
 pub const CMC: &str = "rkp4c-7iaaa-aaaaa-aaaca-cai";
 
-pub const SUBNETS: [&str; 10] = [
+pub const SUBNETS: [&str; 9] = [
+    "nl6hn-ja4yw-wvmpy-3z2jx-ymc34-pisx3-3cp5z-3oj4a-qzzny-jbsv3-4qe",
     "opn46-zyspe-hhmyp-4zu6u-7sbrh-dok77-m7dch-im62f-vyimr-a3n2c-4ae",
-    "w4asl-4nmyj-qnr7c-6cqq4-tkwmt-o26di-iupkq-vx4kt-asbrx-jzuxh-4ae",
-    "snjp4-xlbw4-mnbog-ddwy6-6ckfd-2w5a2-eipqo-7l436-pxqkh-l6fuv-vae",
-    "4zbus-z2bmt-ilreg-xakz4-6tyre-hsqj4-slb4g-zjwqo-snjcc-iqphi-3qe",
-    "brlsh-zidhj-3yy3e-6vqbz-7xnih-xeq2l-as5oc-g32c4-i5pdn-2wwof-oae",
-    "csyj4-zmann-ys6ge-3kzi6-onexi-obayx-2fvak-zersm-euci4-6pslt-lae",
-    "ejbmu-grnam-gk6ol-6irwa-htwoj-7ihfl-goimw-hlnvh-abms4-47v2e-zqe",
-    "fuqsr-in2lc-zbcjj-ydmcw-pzq7h-4xm2z-pto4i-dcyee-5z4rz-x63ji-nae",
-    "io67a-2jmkw-zup3h-snbwi-g6a5n-rm5dn-b6png-lvdpl-nqnto-yih6l-gqe", // 1st
-    "nl6hn-ja4yw-wvmpy-3z2jx-ymc34-pisx3-3cp5z-3oj4a-qzzny-jbsv3-4qe", // 2st
+    "3hhby-wmtmw-umt4t-7ieyg-bbiig-xiylg-sblrt-voxgt-bqckd-a75bf-rqe",
+    "4ecnw-byqwz-dtgss-ua2mh-pfvs7-c3lct-gtf4e-hnu75-j7eek-iifqm-sqe",
+    "6pbhf-qzpdk-kuqbr-pklfa-5ehhf-jfjps-zsj6q-57nrl-kzhpd-mu7hc-vae",
+    "cv73p-6v7zi-u67oy-7jc3h-qspsz-g5lrj-4fn7k-xrax3-thek2-sl46v-jae",
+    "e66qm-3cydn-nkf4i-ml4rb-4ro6o-srm5s-x5hwq-hnprz-3meqp-s7vks-5qe",
+    "k44fs-gm4pv-afozh-rs7zw-cg32n-u7xov-xqyx3-2pw5q-eucnu-cosd4-uqe",
+    "lspz2-jx4pu-k3e7p-znm7j-q4yum-ork6e-6w4q6-pijwq-znehu-4jabe-kqe",
 ];
 
 // "io67a-2jmkw-zup3h-snbwi-g6a5n-rm5dn-b6png-lvdpl-nqnto-yih6l-gqe", // 1st
@@ -197,8 +196,8 @@ pub fn sha256(input: &String) -> [u8; 32] {
     hasher.finalize().into()
 }
 
-#[test]
-fn create() {
+#[tokio::test]
+async fn create() {
     let identity = BasicIdentity::from_pem_file("../identity/identity.pem").unwrap();
     let agent = Agent::builder()
         .with_identity(identity)
@@ -207,4 +206,16 @@ fn create() {
         .unwrap();
     let ledger = LedgerAgent::new(agent.clone());
     let cmc = CmcAgent::new(agent.clone());
+
+    for subnet in SUBNETS {
+        let subnet_id = SubnetId::new(PrincipalId::from_str(subnet).unwrap());
+        match create_canister_in_specific_subnet(cmc.clone(), ledger.clone(), subnet_id).await {
+            Ok(cid) => {
+                println!("Canister ID: {:?}", cid.to_text());
+            }
+            Err(e) => {
+                eprintln!("Error: {:?}", e);
+            }
+        }
+    }
 }

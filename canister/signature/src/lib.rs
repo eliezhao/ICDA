@@ -243,10 +243,13 @@ async fn update_signature(batch_index: u32, batch_confirmation: BatchConfirmatio
         Ok(SignatureReply { signature_hex }) => {
             confirmation.signature = Some(signature_hex);
             // 更新batch confirmation & insert
-            print(format!("update signature for batch index: {}", batch_index));
+            print(format!("update signature for batch: {:?}", confirmation));
             BATCH_CONFIRMATION.with_borrow_mut(|c| c.insert(batch_index, confirmation));
         }
-        Err(e) => print(format!("sign failed: {}", e)),
+        Err(e) => print(format!(
+            "sign failed: batch: {:?}, error: {}",
+            confirmation, e
+        )),
     };
 }
 
@@ -292,7 +295,7 @@ fn prune_expired_confirmation(current_batch_index: u32) {
             .map(hex::encode)
             .collect::<Vec<_>>();
 
-        c.remove(&expired_batch_index);
+        let expired_confirmation = c.remove(&expired_batch_index);
 
         // remove nodes index
         INDEX_MAP.with_borrow_mut(|m| {
@@ -300,7 +303,11 @@ fn prune_expired_confirmation(current_batch_index: u32) {
                 m.remove(key);
             }
         });
-        print(format!("remove expired keys: {:?}", expired_node_keys));
+
+        print(format!(
+            "remove expired confirmation: {:?}",
+            expired_confirmation
+        ));
     });
 }
 

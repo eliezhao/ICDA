@@ -35,7 +35,12 @@ pub struct Blob {
 
 // 1. 第一次上传，则创建一个空的vec，大小为total
 // 2. 之后的上传，将chunk append到vec中
-pub fn insert_to_store_map(hexed_digest: String, index: usize, total_size: usize, data: &[u8]) {
+pub fn insert_to_store_map(
+    hexed_digest: &String,
+    index: usize,
+    total_size: usize,
+    data: &[u8],
+) -> bool {
     BLOBS.with(|map| {
         let mut value = map.borrow().get(&hexed_digest).unwrap_or_else(|| {
             let mut v = Vec::with_capacity(total_size);
@@ -50,11 +55,8 @@ pub fn insert_to_store_map(hexed_digest: String, index: usize, total_size: usize
 
         value[start..end].copy_from_slice(data);
 
-        if value.len().eq(&total_size) {
-            print(format!("save blob of digest: {}", hexed_digest));
-        }
-
-        let _ = map.borrow_mut().insert(hexed_digest, value);
+        let _ = map.borrow_mut().insert(hexed_digest.to_string(), value);
+        end == total_size
     })
 }
 

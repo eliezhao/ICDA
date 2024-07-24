@@ -6,21 +6,32 @@
  ******************************************
 */
 
-use std::borrow::Cow;
-use std::collections::HashSet;
-
 use candid::{CandidType, Decode, Deserialize, Encode, Principal};
 use ic_stable_structures::storable::Bound;
 use ic_stable_structures::Storable;
 use serde::Serialize;
+use std::borrow::Cow;
+use std::collections::HashSet;
+use std::fmt::Debug;
 
-const REPLICA_NUM: usize = 2; // 1 blob, 2 canister replicas
-const COLLECTION_SIZE: usize = 20; // current subnets number, 20 subnets and 40 canisters
+const REPLICA_NUM: usize = 1; // 1 blob, 1 canister replicas
+const COLLECTION_SIZE: usize = 11; // current subnets number, 20 subnets and 40 canisters
 
 const CONFIRMATION_BATCH_SIZE: usize = 12; // current size of the batch
 const CONFIRMATION_LIVE_TIME: u32 = 120961; // 1/12 * 1 week in secs = 12 * 60 * 24 * 7 + 1
-const CANISTER_COLLECTIONS: [[&str; REPLICA_NUM]; COLLECTION_SIZE] =
-    [["hxctj-oiaaa-aaaap-qhltq-cai", "v3y75-6iaaa-aaaak-qikaa-cai"]; COLLECTION_SIZE];
+const CANISTER_COLLECTIONS: [[&str; REPLICA_NUM]; COLLECTION_SIZE] = [
+    ["hxctj-oiaaa-aaaap-qhltq-cai"], // nl6hn-ja4yw-wvmpy-3z2jx-ymc34-pisx3-3cp5z-3oj4a-qzzny-jbsv3-4qe
+    ["v3y75-6iaaa-aaaak-qikaa-cai"], // opn46-zyspe-hhmyp-4zu6u-7sbrh-dok77-m7dch-im62f-vyimr-a3n2c-4ae
+    ["nnw5b-eqaaa-aaaak-qiqaq-cai"], // opn46-zyspe-hhmyp-4zu6u-7sbrh-dok77-m7dch-im62f-vyimr-a3n2c-4ae
+    ["wcrzb-2qaaa-aaaap-qhpgq-cai"], // nl6hn-ja4yw-wvmpy-3z2jx-ymc34-pisx3-3cp5z-3oj4a-qzzny-jbsv3-4qe
+    ["y446g-jiaaa-aaaap-ahpja-cai"], // 3hhby-wmtmw-umt4t-7ieyg-bbiig-xiylg-sblrt-voxgt-bqckd-a75bf-rqe
+    ["hmqa7-byaaa-aaaam-ac4aq-cai"], // 4ecnw-byqwz-dtgss-ua2mh-pfvs7-c3lct-gtf4e-hnu75-j7eek-iifqm-sqe
+    ["jeizw-6yaaa-aaaal-ajora-cai"], // 6pbhf-qzpdk-kuqbr-pklfa-5ehhf-jfjps-zsj6q-57nrl-kzhpd-mu7hc-vae
+    ["vrk5x-dyaaa-aaaan-qmrsq-cai"], // cv73p-6v7zi-u67oy-7jc3h-qspsz-g5lrj-4fn7k-xrax3-thek2-sl46v-jae
+    ["zhu6y-liaaa-aaaal-qjlmq-cai"], // e66qm-3cydn-nkf4i-ml4rb-4ro6o-srm5s-x5hwq-hnprz-3meqp-s7vks-5qe
+    ["oyfj2-gaaaa-aaaak-akxdq-cai"], // k44fs-gm4pv-afozh-rs7zw-cg32n-u7xov-xqyx3-2pw5q-eucnu-cosd4-uqe
+    ["r2xtu-uiaaa-aaaag-alf6q-cai"], // lspz2-jx4pu-k3e7p-znm7j-q4yum-ork6e-6w4q6-pijwq-znehu-4jabe-kqe
+];
 
 #[derive(CandidType, Deserialize, Serialize, Clone)]
 pub enum ConfirmationStatus {
@@ -43,11 +54,28 @@ pub struct Confirmation {
     pub signature: String, // hex encoded signature
 }
 
-#[derive(CandidType, Deserialize, Serialize, Clone, Debug)]
+#[derive(CandidType, Deserialize, Serialize, Clone)]
 pub struct BatchConfirmation {
     pub signature: Option<String>,
     pub root: [u8; 32],
     pub nodes: Vec<[u8; 32]>, // 12 个 blob的digest
+}
+
+impl Debug for BatchConfirmation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("BatchConfirmation")
+            .field("signature", &self.signature)
+            .field("root", &hex::encode(&self.root))
+            .field(
+                "nodes",
+                &self
+                    .nodes
+                    .iter()
+                    .map(|x| hex::encode(x))
+                    .collect::<Vec<_>>(),
+            )
+            .finish()
+    }
 }
 
 impl Storable for BatchConfirmation {
