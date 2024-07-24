@@ -1,8 +1,0 @@
-[2m2024-07-23T14:38:24.172050Z[0m [32m INFO[0m [2mclient[0m[2m:[0m Start client with config: Config { identity: IdentityConfig { path: "../identity/identity.pem" }, batch: BatchConfig { batch_number: 6 }, blob_key: BlobKeyConfig { path: "blob_key.json" }, mode: None }
-[2m2024-07-23T14:38:28.212100Z[0m [32m INFO[0m [2mclient[0m[2m:[0m Batch Index: 0
-[2m2024-07-23T14:38:52.353374Z[0m [32m INFO[0m [2mclient[0m[2m:[0m Batch Index: 1
-[2m2024-07-23T14:39:17.857766Z[0m [32m INFO[0m [2mclient[0m[2m:[0m Batch Index: 2
-[2m2024-07-23T14:39:42.328424Z[0m [32m INFO[0m [2mclient[0m[2m:[0m Batch Index: 3
-[2m2024-07-23T14:40:10.123612Z[0m [32m INFO[0m [2mclient[0m[2m:[0m Batch Index: 4
-[2m2024-07-23T14:40:35.102824Z[0m [32m INFO[0m [2mclient[0m[2m:[0m Batch Index: 5
-[2m2024-07-23T14:40:59.542046Z[0m [32m INFO[0m [2mclient[0m[2m:[0m Write key to file success
