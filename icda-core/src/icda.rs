@@ -13,7 +13,7 @@ use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex;
-use tracing::{error, warn};
+use tracing::{error, info, warn};
 
 pub const REPLICA_NUM: usize = 1;
 
@@ -336,6 +336,7 @@ impl ICDA {
                     .clone()
             })
             .collect::<Vec<_>>();
+        info!("ICDA::get_storage_canisters(): {:?}", cids);
 
         storage_canisters
     }
