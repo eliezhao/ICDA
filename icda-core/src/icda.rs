@@ -84,14 +84,20 @@ impl ICDA {
             agent.clone(),
         );
 
-        if let Ok(res) = signature_canister.public_key().await {
-            if res.is_empty() {
-                match signature_canister.init().await {
-                    Ok(_) => {}
-                    Err(e) => bail!(
-                        "ICDA::new(): signature canister init failed, error: {:?}",
-                        e
-                    ),
+        loop {
+            if let Ok(res) = signature_canister.public_key().await {
+                if !res.is_empty() {
+                    break;
+                } else {
+                    match signature_canister.init().await {
+                        Ok(_) => {
+                            break;
+                        }
+                        Err(e) => {
+                            warn!("ICDA::new(): signature canister init failed, error: {:?}, retry after 5 seconds",e);
+                            tokio::time::sleep(Duration::from_secs(5)).await;
+                        }
+                    }
                 }
             }
         }
