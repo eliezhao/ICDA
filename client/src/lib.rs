@@ -52,17 +52,38 @@ pub async fn put_to_canister(
 ) -> anyhow::Result<()> {
     let mut rng = rand::thread_rng();
 
-    let mut batch = vec![vec![0u8; 2 * 1024 * 1024]; batch_number];
-    for i in &mut batch {
-        rng.fill(&mut i[..]);
+    let mut batch = vec![vec![vec![0u8; 2 * 1024 * 1024]; 5]; batch_number];
+    for sub in &mut batch {
+        for item in sub.iter_mut() {
+            rng.fill(&mut item[..]);
+        }
     }
 
     let mut keys = Vec::with_capacity(batch.len());
 
     for (index, item) in batch.iter().enumerate() {
         info!("Batch Index: {}", index);
-        let res = da.push_blob_to_canisters(item.to_vec()).await?;
-        keys.push(res)
+
+        let mut tasks = Vec::new();
+        for i in 0..item.len() {
+            let _da = da.clone();
+            let _item = item[i].clone();
+            tasks.push(async move {
+                match _da.push_blob_to_canisters(_item).await {
+                    Ok(res) => {
+                        info!("push blob to canister success, blob key: \n{:?}", res);
+                        res
+                    }
+                    Err(e) => {
+                        error!("push blob to canister error: {:?}", e);
+                        BlobKey::default()
+                    }
+                }
+            });
+        }
+        join_all(tasks).await.into_iter().for_each(|res| {
+            keys.push(res);
+        });
     }
 
     let content = fs::read_to_string(&key_path).await.unwrap_or_default();
