@@ -61,13 +61,12 @@ pub async fn put_to_canister(
 
     let mut keys = Vec::with_capacity(batch.len());
 
-    for (index, item) in batch.iter().enumerate() {
+    for (index, item) in batch.into_iter().enumerate() {
         info!("Batch Index: {}", index);
 
         let mut tasks = Vec::new();
-        for i in 0..item.len() {
+        for _item in item.into_iter() {
             let _da = da.clone();
-            let _item = item[i].clone();
             tasks.push(async move {
                 match _da.push_blob_to_canisters(_item).await {
                     Ok(res) => {
