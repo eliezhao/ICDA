@@ -196,6 +196,7 @@ async fn init() {
     if PUBLIC_KEY.with(|k| k.borrow().is_empty()) {
         match init_public_key().await {
             Ok(key) => {
+                print(format!("init public key: {:?}", key));
                 PUBLIC_KEY.with(|k| *k.borrow_mut() = key);
             }
             Err(e) => print(format!("init public key failed: {}", e)),

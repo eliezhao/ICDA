@@ -84,12 +84,16 @@ impl ICDA {
             agent.clone(),
         );
 
-        match signature_canister.init().await {
-            Ok(_) => {}
-            Err(e) => bail!(
-                "ICDA::new(): signature canister init failed, error: {:?}",
-                e
-            ),
+        if let Ok(res) = signature_canister.public_key().await {
+            if res.is_empty() {
+                match signature_canister.init().await {
+                    Ok(_) => {}
+                    Err(e) => bail!(
+                        "ICDA::new(): signature canister init failed, error: {:?}",
+                        e
+                    ),
+                }
+            }
         }
 
         let canister_collection_index = Arc::new(Mutex::new(random::<usize>() % COLLECTION_SIZE));
@@ -272,6 +276,8 @@ impl ICDA {
                         );
                     }
                     tokio::time::sleep(Duration::from_secs(5)).await;
+                } else {
+                    break;
                 }
             }
         }
