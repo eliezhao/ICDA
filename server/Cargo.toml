@@ -11,7 +11,6 @@ governor = "0.6.0"
 prost = "0.12.6"
 redb = "1.0.5"
 toml = "0.8.13"
-sha2 = { workspace = true }
 tokio = { version = "1.35.1", features = ["full", "sync"] }
 tokio-stream = "0.1.15"
 tonic = { version = "0.10.2", features = ["gzip", "tls", "tls-roots", "tls-roots-common", "tls-webpki-roots"] }
@@ -19,17 +18,20 @@ tonic-build = "0.10.2"
 tracing = "0.1.37"
 tracing-appender = "0.2.2"
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
-candid = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
-icda-core = { path = "../icda-core" }
-futures = "0.3"
 backon = "0.4.4"
-rand = "0.8.5"
-hex = "0.4.3"
 aws-config = { version = "1.0.1", features = ["behavior-version-latest"] }
 aws-sdk-s3 = { version = "1.4.0", features = ["rt-tokio"] }
 aws-sdk-sts = "1.17.0"
+
+# workspace deps
+candid = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+icda-core = { workspace = true }
+futures = { workspace = true }
+rand = { workspace = true }
+hex = { workspace = true }
 
 [build-dependencies]
 anyhow = { version = "1.0.79", features = ["backtrace"] }

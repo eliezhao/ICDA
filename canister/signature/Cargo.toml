@@ -7,9 +7,9 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-ic-stable-structures = "0.6"
-ic-cdk = "0.14.0"
-ic-cdk-macros = "0.13.2"
+ic-stable-structures = { workspace = true }
+ic-cdk = { workspace = true }
+ic-cdk-macros = { workspace = true }
 hex = { workspace = true }
 rs_merkle = { workspace = true }
 serde = { workspace = true }

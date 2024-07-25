@@ -19,7 +19,7 @@ pub const REPLICA_NUM: usize = 1;
 pub const COLLECTION_SIZE: usize = 11;
 // 1 week in nanos
 pub const BLOB_LIVE_TIME: u128 = 7 * 24 * 60 * 60 * 1_000_000_000;
-pub const CONFIRMATION_BATCH_SIZE: u64 = 12;
+pub const CONFIRMATION_BATCH_SIZE: usize = 12;
 pub const CONFIRMATION_LIVE_TIME: u32 = 60 * 60 * 24 * 7 + 1; // 1 week in nanos
 pub const QUERY_RESPONSE_SIZE: usize = 2621440; // 2.5 * 1024 * 1024 = 2.5 MB
 pub const CANISTER_THRESHOLD: u32 = 30240;
@@ -269,6 +269,22 @@ impl ICDA {
                         e
                     );
                     if i == 2 {
+                        // save chunks into local storage
+                        let serialized = bincode::serialize(&chunk).unwrap();
+                        let _ = tokio::fs::write(
+                            format!("chunk_{}_{}.bin", sc.canister_id.to_text(), chunk.index),
+                            serialized,
+                        )
+                        .await;
+
+                        warn!(
+                            "ICDA::save_blob_chunk(): cid: {}, error: {:?}, retry 3 times failed. Save chunk to local storage: chunk_{}_{}.bin",
+                            sc.canister_id.to_text(),
+                            e,
+                            sc.canister_id.to_text(),
+                            chunk.index
+                        );
+
                         bail!(
                             "ICDA::save_blob_chunk(): cid: {}, error: {:?}, retry 3 times failed",
                             sc.canister_id.to_text(),

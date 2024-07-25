@@ -36,7 +36,7 @@ pub enum ConfirmationStatus {
 
 #[derive(CandidType, Serialize, Deserialize, Debug)]
 pub struct SignatureCanisterConfig {
-    pub confirmation_batch_size: u64,
+    pub confirmation_batch_size: usize,
     pub confirmation_live_time: u32,
     pub da_canisters: HashSet<Principal>,
     pub owner: Principal, // who can change confirmation config
@@ -133,7 +133,7 @@ impl SignatureCanister {
                     confirmation.root,
                     &[confirmation.proof.leaf_index],
                     &[confirmation.proof.leaf_digest],
-                    6,
+                    CONFIRMATION_BATCH_SIZE,
                 ) {
                     VerifyResult::Valid
                 } else {

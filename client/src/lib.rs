@@ -13,8 +13,6 @@ use tracing::{error, info, warn};
 
 pub mod ic;
 
-pub const CANISTER_THRESHOLD: u32 = 30240;
-
 pub async fn get_from_canister(key_path: String, da: &ICDA) -> anyhow::Result<()> {
     let mut file = OpenOptions::new()
         .read(true)
