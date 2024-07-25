@@ -6,10 +6,22 @@ use ic_agent::identity::BasicIdentity;
 use ic_agent::Agent;
 use std::sync::Arc;
 
-const BOUNDARY_NODE_POOL: [&str; 3] = [
-    "https://ic0.app",
-    "https://162.247.129.233",
-    "https://216.52.51.137",
+const BOUNDARY_NODE_POOL: [&str; 15] = [
+    "63.251.162.12",
+    "147.75.202.74",
+    "162.247.129.233",
+    "193.118.59.140",
+    "193.118.63.169",
+    "193.118.63.173",
+    "193.118.63.170",
+    "212.71.124.187",
+    "212.71.124.188",
+    "212.71.124.189",
+    "212.71.124.190",
+    "212.71.124.187",
+    "216.52.51.137",
+    "216.52.51.138",
+    "216.52.51.139",
 ];
 
 #[derive(Clone)]
@@ -21,12 +33,16 @@ impl RoundRobinAgent {
     pub fn new(identity: BasicIdentity) -> Self {
         let client = Client::builder()
             .use_rustls_tls()
+            .danger_accept_invalid_certs(true)
             .build()
             .expect("Could not create HTTP client.");
 
         let rr_router = Arc::new(
             RoundRobinRouteProvider::new(
-                BOUNDARY_NODE_POOL.iter().map(|s| s.to_string()).collect(),
+                BOUNDARY_NODE_POOL
+                    .iter()
+                    .map(|s| format!("{}{}", "https://", s))
+                    .collect(),
             )
             .unwrap(),
         );
