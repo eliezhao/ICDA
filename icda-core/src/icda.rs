@@ -98,6 +98,9 @@ impl ICDA {
 
         let canister_collection_index = Arc::new(Mutex::new(random::<usize>() % COLLECTION_SIZE));
 
+        // create backup dir
+        let _ = tokio::fs::create_dir("backup").await;
+
         Ok(Self {
             canister_collection_index,
             storage_canisters_map,
@@ -272,7 +275,11 @@ impl ICDA {
                         // save chunks into local storage
                         let serialized = bincode::serialize(&chunk).unwrap();
                         let _ = tokio::fs::write(
-                            format!("chunk_{}_{}.bin", sc.canister_id.to_text(), chunk.index),
+                            format!(
+                                "backup/chunk_{}_{}.bin",
+                                sc.canister_id.to_text(),
+                                chunk.index
+                            ),
                             serialized,
                         )
                         .await;
