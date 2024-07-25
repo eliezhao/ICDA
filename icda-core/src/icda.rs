@@ -110,50 +110,47 @@ impl ICDA {
 
     pub async fn push_blob_to_canisters(&self, blob: Vec<u8>) -> Result<BlobKey> {
         let blob_digest: [u8; 32] = sha2::Sha256::digest(&blob).into();
-
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("Failed to get timestamp")
             .as_nanos();
-
         let total_size = blob.len();
-
         let storage_canisters = self.get_storage_canisters().await;
-
         let routing_canisters = storage_canisters
             .iter()
             .map(|sc| sc.canister_id)
             .collect::<Vec<_>>();
 
-        let (tx, mut rx) = tokio::sync::mpsc::channel(storage_canisters.len());
+        let fut = async move {
+            let blob_chunks = Arc::new(BlobChunk::generate_chunks(blob, blob_digest, timestamp));
 
-        let blob_chunks = Arc::new(BlobChunk::generate_chunks(blob, blob_digest, timestamp));
-
-        let storage_canisters_num = storage_canisters.len();
-
-        for sc in storage_canisters {
-            let _chunks = blob_chunks.clone();
-            let _tx = tx.clone();
-
-            tokio::spawn(async move {
-                let cid = sc.canister_id;
-                let res = Self::push_chunks_to_canister(sc, _chunks).await;
-                let _ = _tx.send((cid, res)).await;
-                drop(_tx);
-            });
-        }
-
-        for _ in 0..storage_canisters_num {
-            if let Some((cid, Err(e))) = rx.recv().await {
-                error!(
-                    "ICDA::save_blob_chunk(): cid = {}, error: {:?}",
-                    cid.to_text(),
-                    e
-                );
+            for sc in storage_canisters {
+                let _chunks = blob_chunks.clone();
+                let fut = async move {
+                    let cid = sc.canister_id;
+                    let hexed_digest = hex::encode(blob_digest);
+                    match Self::push_chunks_to_canister(sc, _chunks).await {
+                        Ok(_) => {
+                            info!(
+                                "ICDA::save_blob_chunk(): cid = {}, digest: {}, success",
+                                cid.to_text(),
+                                hexed_digest
+                            );
+                        }
+                        Err(e) => {
+                            error!(
+                                "ICDA::save_blob_chunk(): cid = {}, digest: {}, error: {:?}",
+                                cid.to_text(),
+                                hexed_digest,
+                                e
+                            );
+                        }
+                    }
+                };
+                tokio::spawn(fut);
             }
-        }
-
-        rx.close();
+        };
+        tokio::spawn(fut);
 
         let blob_key = BlobKey {
             digest: blob_digest,
@@ -293,8 +290,9 @@ impl ICDA {
                         );
 
                         bail!(
-                            "ICDA::save_blob_chunk(): cid: {}, error: {:?}, retry 3 times failed",
+                            "ICDA::save_blob_chunk(): cid: {}, digest: {}, error: {:?}, retry 3 times failed",
                             sc.canister_id.to_text(),
+                            hex::encode(chunk.digest),
                             e
                         );
                     }
@@ -368,9 +366,18 @@ async fn test_icda() {
         .await
         .unwrap();
 
-    let blob = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
+    let blob = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 15];
 
+    let before = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Failed to get timestamp")
+        .as_nanos();
     let blob_key = icda.push_blob_to_canisters(blob.clone()).await.unwrap();
+    let after = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Failed to get timestamp")
+        .as_nanos();
+    println!("before: {}, after: {}", before, after);
 
     let blob2 = icda.get_blob_from_canisters(blob_key).await.unwrap();
 
