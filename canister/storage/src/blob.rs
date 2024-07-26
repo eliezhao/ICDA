@@ -11,7 +11,7 @@ use serde::Serialize;
 // upload 用
 #[derive(Deserialize, Serialize, CandidType, Debug, Clone)]
 pub struct BlobChunk {
-    /// index of the chunk.
+    /// Segmented upload index.
     pub index: usize,
 
     /// Sha256 digest of the blob in hex format.
@@ -20,17 +20,17 @@ pub struct BlobChunk {
     /// Time since epoch in nanos.
     pub timestamp: u128,
 
-    /// blob总大小
+    /// Total blob size in bytes.
     pub total: usize,
 
-    /// The actual chunk.
+    /// chunk data: A piece of the blob.
     pub data: Vec<u8>,
 }
 
 #[derive(CandidType, Deserialize, Serialize, Clone, Default)]
 pub struct Blob {
     pub data: Vec<u8>,
-    pub next: Option<usize>, // next start index
+    pub next: Option<usize>, // next index
 }
 
 // 1. 第一次上传，则创建一个空的vec，大小为total

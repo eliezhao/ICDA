@@ -94,7 +94,7 @@ fn get_blob_with_index(digest: [u8; 32], index: usize) -> Blob {
     blob
 }
 
-// Inserts an entry into the map and returns the previous value of the key if it exists.
+// Inserts an entry into the map
 #[update(name = "save_blob")]
 #[candid_method]
 async fn save_blob(chunk: BlobChunk) -> Result<(), String> {
