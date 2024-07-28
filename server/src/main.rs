@@ -2,11 +2,6 @@
 //!
 //! Cargo run -p da_server -- s3 --profile profile-abc --bucket bucket-xyz
 //! cargo run -p da_server -- local --db-path /tmp/da_server.db
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::num::NonZeroU32;
-use std::path::PathBuf;
-use std::pin::Pin;
-use std::sync::Arc;
 
 use anyhow::Result;
 use async_trait::async_trait;
@@ -18,6 +13,12 @@ use server::disperser::{
     BlobStatus, BlobStatusReply, BlobStatusRequest, BlobVerificationProof, DisperseBlobReply,
     DisperseBlobRequest, G1Commitment, RetrieveBlobReply, RetrieveBlobRequest,
 };
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::num::NonZeroU32;
+use std::path::PathBuf;
+use std::pin::Pin;
+use std::sync::Arc;
+use std::time::Duration;
 
 use icda_core::icda::ICDA;
 use server::storage::{LocalStorage, S3Storage, Storage};
@@ -209,10 +210,15 @@ async fn main() -> Result<()> {
     } = <Cli as clap::Parser>::parse();
 
     let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), server_port);
+
+    let mut is_icda = false;
     let storage: Box<dyn Storage> = match cmd {
         Cmd::S3(S3 { profile, bucket }) => Box::new(S3Storage::new(profile, bucket).await),
         Cmd::Local(Local { db_path }) => Box::new(LocalStorage::new(db_path)?),
-        Cmd::IC(IC { pem_path }) => Box::new(ICDA::new(pem_path).await?),
+        Cmd::IC(IC { pem_path }) => {
+            is_icda = true;
+            Box::new(ICDA::new(pem_path).await?)
+        }
     };
 
     // Save/restore a test blob to ensure the backend is set up.
@@ -220,6 +226,14 @@ async fn main() -> Result<()> {
         .save_blob(vec![102, 97, 105, 122, 32, 104, 97, 110, 97, 10])
         .await
         .unwrap();
+
+    tracing::info!("checking service...");
+
+    // check if cmd is IC
+    if is_icda {
+        tokio::time::sleep(Duration::from_secs(10)).await
+    }
+
     let _ret = storage.get_blob(id).await.unwrap();
     tracing::trace!("Initial save/restore successful");
 
