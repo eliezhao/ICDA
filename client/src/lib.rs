@@ -97,7 +97,7 @@ pub async fn put_to_canister(
         };
 
         tokio::spawn(fut);
-        tokio::time::sleep(Duration::from_secs(1)).await;
+        tokio::time::sleep(Duration::from_secs(15)).await;
     }
 
     loop {
