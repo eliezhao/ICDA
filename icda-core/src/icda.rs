@@ -86,6 +86,8 @@ impl ICDA {
             agent.clone(),
         );
 
+        //todo: 这里老出不来
+
         loop {
             if let Ok(res) = signature_canister.public_key().await {
                 if !res.is_empty() {
@@ -254,6 +256,8 @@ impl ICDA {
             };
             tokio::spawn(fut);
         }
+
+        drop(tx);
 
         loop {
             tokio::select! {
