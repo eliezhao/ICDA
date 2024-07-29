@@ -7,6 +7,7 @@ use icda_core::icda::{BlobKey, ICDA};
 use rand::Rng;
 use serde_json::json;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::fs;
 use tokio::fs::OpenOptions;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -57,15 +58,16 @@ pub async fn put_to_canister(
 ) -> anyhow::Result<()> {
     let keys = Arc::new(Mutex::new(Vec::with_capacity(5 * batch_number)));
     // future tasks
-    let mut futs = Vec::with_capacity(batch_number);
+    let futs = Arc::new(Mutex::new(Vec::with_capacity(batch_number)));
 
     let da = Arc::new(da);
     // push blob to canisters
-    for i in 1..=batch_number {
+    for i in 0..batch_number {
         info!("Batch Index: {}", i);
 
         let _keys = keys.clone();
         let _da = da.clone();
+        let _futs = futs.clone();
         // send 10M futures
         let mut batch = vec![vec![0u8; 2 * 1024 * 1024]; 5];
         let mut rng = rand::thread_rng();
@@ -76,58 +78,66 @@ pub async fn put_to_canister(
         let fut = async move {
             for item in batch.into_iter() {
                 let _da = _da.clone();
+                let _keys = _keys.clone();
+                let _futs = _futs.clone();
                 let disperse_fut = async move {
                     match _da.push_blob_to_canisters(item).await {
                         Ok(res) => {
                             info!("push blob to canister success, blob key: \n{:?}", res);
-                            Ok(res)
+                            _keys.lock().await.push(res);
                         }
                         Err(e) => {
                             error!("push blob to canister error: {:?}", e);
-                            Err(e)
                         }
                     }
                 };
-
-                if let Ok(res) = disperse_fut.await {
-                    _keys.lock().await.push(res);
-                }
+                let handle = tokio::spawn(disperse_fut);
+                _futs.lock().await.push(handle);
             }
         };
-        let handle = tokio::spawn(fut);
-        futs.push(handle);
+
+        tokio::spawn(fut);
+        tokio::time::sleep(Duration::from_secs(1)).await;
     }
 
-    let _ = join_all(futs).await;
+    loop {
+        if let Some(futs) = Arc::into_inner(futs.clone()) {
+            let _ = join_all(futs.into_inner()).await;
 
-    let content = fs::read_to_string(&key_path).await.unwrap_or_default();
+            let content = fs::read_to_string(&key_path).await.unwrap_or_default();
 
-    let mut old_keys = Vec::new();
+            let mut old_keys = Vec::new();
 
-    if !content.is_empty() {
-        old_keys = serde_json::from_str(content.trim()).unwrap_or_else(|e| {
-            error!("parse old keys failed: {}", e);
-            Vec::new()
-        });
+            if !content.is_empty() {
+                old_keys = serde_json::from_str(content.trim()).unwrap_or_else(|e| {
+                    error!("parse old keys failed: {}", e);
+                    Vec::new()
+                });
+            }
+
+            keys.lock().await.extend(old_keys);
+
+            let json_value = json!(*(keys.lock().await));
+            let json_str = serde_json::to_string_pretty(&json_value).unwrap();
+            let mut file = OpenOptions::new()
+                .write(true)
+                .truncate(true)
+                .create(true)
+                .open(key_path)
+                .await
+                .expect("Unable to open file");
+            // write json str into file
+            file.write_all(json_str.as_bytes())
+                .await
+                .expect("Unable to write file");
+
+            info!("Write key to file success");
+            break;
+        } else {
+            tokio::time::sleep(Duration::from_secs(5)).await;
+        };
     }
 
-    keys.lock().await.extend(old_keys);
-
-    let json_value = json!(*(keys.lock().await));
-    let json_str = serde_json::to_string_pretty(&json_value).unwrap();
-    let mut file = OpenOptions::new()
-        .write(true)
-        .truncate(true)
-        .create(true)
-        .open(key_path)
-        .await
-        .expect("Unable to open file");
-    // write json str into file
-    file.write_all(json_str.as_bytes())
-        .await
-        .expect("Unable to write file");
-
-    info!("Write key to file success");
     Ok(())
 }
 
