@@ -117,17 +117,17 @@ async fn talk_to_canister(
     key_path: String,
     commands: Commands,
 ) {
-    let mut da = ICDA::new(identity_path).await.unwrap();
+    let da = ICDA::new(identity_path).await.unwrap();
 
     match commands {
         Commands::Put => {
-            let _ = put_to_canister(batch_number, key_path, &mut da).await;
+            let _ = put_to_canister(batch_number, key_path, da).await;
         }
         Commands::Get => {
-            let _ = get_from_canister(key_path, &da).await;
+            let _ = get_from_canister(key_path, da).await;
         }
         Commands::Verify => {
-            let _ = verify_confirmation(key_path, &da).await;
+            let _ = verify_confirmation(key_path, da).await;
         }
         Commands::Init(InitConfigPath { path }) => {
             let _ = init_canister(path, &da).await;

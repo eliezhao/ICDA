@@ -6,14 +6,18 @@ use icda_core::canister_interface::storage::StorageCanisterConfig;
 use icda_core::icda::{BlobKey, ICDA};
 use rand::Rng;
 use serde_json::json;
+use std::sync::Arc;
 use tokio::fs;
 use tokio::fs::OpenOptions;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::sync::Mutex;
 use tracing::{error, info, warn};
 
 pub mod ic;
 
-pub async fn get_from_canister(key_path: String, da: &ICDA) -> anyhow::Result<()> {
+pub async fn get_from_canister(key_path: String, da: ICDA) -> anyhow::Result<()> {
+    let da = Arc::new(da);
+
     let mut file = OpenOptions::new()
         .read(true)
         .open(key_path)
@@ -30,8 +34,9 @@ pub async fn get_from_canister(key_path: String, da: &ICDA) -> anyhow::Result<()
     let mut tasks = Vec::new();
 
     for key in keys.iter() {
+        let _da = da.clone();
         tasks.push(async move {
-            match da.get_blob_from_canisters(key.clone()).await {
+            match _da.get_blob_from_canisters(key.clone()).await {
                 Ok(_) => {
                     info!("get from canister success, blob key: \n{:?}", key);
                 }
@@ -48,42 +53,52 @@ pub async fn get_from_canister(key_path: String, da: &ICDA) -> anyhow::Result<()
 pub async fn put_to_canister(
     batch_number: usize,
     key_path: String,
-    da: &mut ICDA,
+    da: ICDA,
 ) -> anyhow::Result<()> {
-    let mut rng = rand::thread_rng();
+    let keys = Arc::new(Mutex::new(Vec::with_capacity(5 * batch_number)));
+    // future tasks
+    let mut futs = Vec::with_capacity(batch_number);
 
-    let mut batch = vec![vec![vec![0u8; 2 * 1024 * 1024]; 5]; batch_number];
-    for sub in &mut batch {
-        for item in sub.iter_mut() {
-            rng.fill(&mut item[..]);
+    let da = Arc::new(da);
+    // push blob to canisters
+    for i in 1..=batch_number {
+        info!("Batch Index: {}", i);
+
+        let _keys = keys.clone();
+        let _da = da.clone();
+        // send 10M futures
+        let mut batch = vec![vec![0u8; 2 * 1024 * 1024]; 5];
+        let mut rng = rand::thread_rng();
+        for sub in &mut batch {
+            rng.fill(&mut sub[..]);
         }
-    }
 
-    let mut keys = Vec::with_capacity(batch.len());
-
-    for (index, item) in batch.into_iter().enumerate() {
-        info!("Batch Index: {}", index);
-
-        let mut tasks = Vec::new();
-        for _item in item.into_iter() {
-            let _da = da.clone();
-            tasks.push(async move {
-                match _da.push_blob_to_canisters(_item).await {
-                    Ok(res) => {
-                        info!("push blob to canister success, blob key: \n{:?}", res);
-                        res
+        let fut = async move {
+            for item in batch.into_iter() {
+                let _da = _da.clone();
+                let disperse_fut = async move {
+                    match _da.push_blob_to_canisters(item).await {
+                        Ok(res) => {
+                            info!("push blob to canister success, blob key: \n{:?}", res);
+                            Ok(res)
+                        }
+                        Err(e) => {
+                            error!("push blob to canister error: {:?}", e);
+                            Err(e)
+                        }
                     }
-                    Err(e) => {
-                        error!("push blob to canister error: {:?}", e);
-                        BlobKey::default()
-                    }
+                };
+
+                if let Ok(res) = disperse_fut.await {
+                    _keys.lock().await.push(res);
                 }
-            });
-        }
-        join_all(tasks).await.into_iter().for_each(|res| {
-            keys.push(res);
-        });
+            }
+        };
+        let handle = tokio::spawn(fut);
+        futs.push(handle);
     }
+
+    let _ = join_all(futs).await;
 
     let content = fs::read_to_string(&key_path).await.unwrap_or_default();
 
@@ -96,9 +111,9 @@ pub async fn put_to_canister(
         });
     }
 
-    keys.extend(old_keys);
+    keys.lock().await.extend(old_keys);
 
-    let json_value = json!(keys);
+    let json_value = json!(*(keys.lock().await));
     let json_str = serde_json::to_string_pretty(&json_value).unwrap();
     let mut file = OpenOptions::new()
         .write(true)
@@ -116,7 +131,7 @@ pub async fn put_to_canister(
     Ok(())
 }
 
-pub async fn verify_confirmation(key_path: String, da: &ICDA) -> anyhow::Result<()> {
+pub async fn verify_confirmation(key_path: String, da: ICDA) -> anyhow::Result<()> {
     let mut file = OpenOptions::new()
         .read(true)
         .open(key_path)

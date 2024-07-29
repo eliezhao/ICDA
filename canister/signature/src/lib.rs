@@ -1,21 +1,24 @@
 //! # Signature
-//! confirmation
+//! * confirmation
 //! - signature on root
 //! - merkle proof
 //! - node digest
 //!
-//! 生成confirmation
+//! ## 生成confirmation
 //! - 1个batch生成1次signature
 //! - 然后保存tree和root，signature
 //! - 当需要获取confirmation的时候，就组成proof，然后生成confirmation
-//! 保存confirmation
+//!
+//! ## 保存confirmation
 //! - 有1个key到了以后，可以获取到在哪个batch，所以需要key => batch index的map
 //! - 有1个batch index => BatchConfirmation的map
-//! 获取confirmation
+//!
+//! ## 获取confirmation
 //! - 通过key获取到batch index
 //! - 通过batch index获取到BatchConfirmation结构体
 //! - 通过tree和index生成proof，然后生成confirmation
-//! 删除confirmation
+//!
+//! ## 删除confirmation
 //! - 每次生成1个confirmation，就说明可能有一个confirmation过期了,如果过期了就删除过期的confirmation
 
 use std::cell::RefCell;

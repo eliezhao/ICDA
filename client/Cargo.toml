@@ -33,4 +33,4 @@ backon = { workspace = true }
 rand = { workspace = true }
 tracing = { workspace = true }
 rs_merkle = { workspace = true }
-icda-core = { workspace = true }
+icda-core = { workspace = true, features = ["client"] }

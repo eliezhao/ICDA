@@ -127,10 +127,47 @@ impl ICDA {
             .map(|sc| sc.canister_id)
             .collect::<Vec<_>>();
 
-        let fut = async move {
-            let blob_chunks = Arc::new(BlobChunk::generate_chunks(blob, blob_digest, timestamp));
+        let blob_chunks = Arc::new(BlobChunk::generate_chunks(
+            blob.clone(),
+            blob_digest,
+            timestamp,
+        ));
 
-            for sc in storage_canisters {
+        #[cfg(feature = "client")]
+        {
+            let mut tasks = vec![];
+
+            for sc in storage_canisters.clone() {
+                let _chunks = blob_chunks.clone();
+                let fut = async move {
+                    let cid = sc.canister_id;
+                    let hexed_digest = hex::encode(blob_digest);
+                    match Self::push_chunks_to_canister(sc, _chunks).await {
+                        Ok(_) => {
+                            info!(
+                                "ICDA::save_blob_chunk(): cid = {}, digest: {}, success",
+                                cid.to_text(),
+                                hexed_digest
+                            );
+                        }
+                        Err(e) => {
+                            error!(
+                                "ICDA::save_blob_chunk(): cid = {}, digest: {}, error: {:?}",
+                                cid.to_text(),
+                                hexed_digest,
+                                e
+                            );
+                        }
+                    }
+                };
+                tasks.push(tokio::spawn(fut));
+            }
+            futures::future::join_all(tasks).await;
+        }
+
+        #[cfg(feature = "server")]
+        {
+            for sc in storage_canisters.into_iter() {
                 let _chunks = blob_chunks.clone();
                 let fut = async move {
                     let cid = sc.canister_id;
@@ -155,8 +192,7 @@ impl ICDA {
                 };
                 tokio::spawn(fut);
             }
-        };
-        tokio::spawn(fut);
+        }
 
         let blob_key = BlobKey {
             digest: blob_digest,

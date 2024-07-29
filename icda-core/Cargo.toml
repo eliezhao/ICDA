@@ -23,3 +23,9 @@ backon = { workspace = true }
 rand = { workspace = true }
 tracing = { workspace = true }
 futures = { workspace = true }
+
+
+[features]
+default = ["client"]
+client = []
+server = []
