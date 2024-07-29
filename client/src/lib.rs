@@ -79,7 +79,6 @@ pub async fn put_to_canister(
             for item in batch.into_iter() {
                 let _da = _da.clone();
                 let _keys = _keys.clone();
-                let _futs = _futs.clone();
                 let disperse_fut = async move {
                     match _da.push_blob_to_canisters(item).await {
                         Ok(res) => {
@@ -94,49 +93,51 @@ pub async fn put_to_canister(
                 let handle = tokio::spawn(disperse_fut);
                 _futs.lock().await.push(handle);
             }
+            drop(_futs);
         };
 
         tokio::spawn(fut);
         tokio::time::sleep(Duration::from_secs(15)).await;
     }
 
-    loop {
-        if let Some(futs) = Arc::into_inner(futs.clone()) {
-            let _ = join_all(futs.into_inner()).await;
-
-            let content = fs::read_to_string(&key_path).await.unwrap_or_default();
-
-            let mut old_keys = Vec::new();
-
-            if !content.is_empty() {
-                old_keys = serde_json::from_str(content.trim()).unwrap_or_else(|e| {
-                    error!("parse old keys failed: {}", e);
-                    Vec::new()
-                });
-            }
-
-            keys.lock().await.extend(old_keys);
-
-            let json_value = json!(*(keys.lock().await));
-            let json_str = serde_json::to_string_pretty(&json_value).unwrap();
-            let mut file = OpenOptions::new()
-                .write(true)
-                .truncate(true)
-                .create(true)
-                .open(key_path)
-                .await
-                .expect("Unable to open file");
-            // write json str into file
-            file.write_all(json_str.as_bytes())
-                .await
-                .expect("Unable to write file");
-
-            info!("Write key to file success");
-            break;
-        } else {
-            tokio::time::sleep(Duration::from_secs(5)).await;
-        };
+    while Arc::strong_count(&futs) > 1 {
+        info!("waiting for all futures to complete");
+        tokio::time::sleep(Duration::from_secs(5)).await;
     }
+
+    let mut futs_guard = futs.lock().await;
+    let futs_vec = futs_guard.drain(..).collect::<Vec<_>>();
+    drop(futs_guard); // Explicitly drop the lock to avoid holding it during await
+    let _ = join_all(futs_vec).await;
+
+    let content = fs::read_to_string(&key_path).await.unwrap_or_default();
+
+    let mut old_keys = Vec::new();
+
+    if !content.is_empty() {
+        old_keys = serde_json::from_str(content.trim()).unwrap_or_else(|e| {
+            error!("parse old keys failed: {}", e);
+            Vec::new()
+        });
+    }
+
+    keys.lock().await.extend(old_keys);
+
+    let json_value = json!(*(keys.lock().await));
+    let json_str = serde_json::to_string_pretty(&json_value).unwrap();
+    let mut file = OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .create(true)
+        .open(key_path)
+        .await
+        .expect("Unable to open file");
+    // write json str into file
+    file.write_all(json_str.as_bytes())
+        .await
+        .expect("Unable to write file");
+
+    info!("Write key to file success");
 
     Ok(())
 }
