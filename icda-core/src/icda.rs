@@ -26,6 +26,8 @@ pub const CANISTER_THRESHOLD: u32 = 30240;
 pub const SIGNATURE_CANISTER: &str = "r34pn-oaaaa-aaaak-qinga-cai";
 pub(crate) const DEFAULT_OWNER: &str =
     "ytoqu-ey42w-sb2ul-m7xgn-oc7xo-i4btp-kuxjc-b6pt4-dwdzu-kfqs4-nae";
+pub(crate) const TEST_IDENTITY: &str =
+    "rtw64-dzklf-dqtzm-lhev7-ufjji-fnmfq-bkyyf-ljaod-ldfpb-w2zyk-7ae";
 
 // canister collections
 pub const CANISTER_COLLECTIONS: [[&str; REPLICA_NUM]; COLLECTION_SIZE] = [

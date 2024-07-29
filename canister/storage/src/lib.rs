@@ -171,8 +171,8 @@ fn export_candid() {
     println!("{:#?}", __export_service());
 }
 
-fn check_caller(c: Principal) -> bool {
-    c.eq(&DACONFIG.with_borrow(|c| c.owner))
+fn check_caller(p: Principal) -> bool {
+    DACONFIG.with_borrow(|c| c.owner.contains(&p))
 }
 
 fn blob_exist(hexed_digest: &String) -> bool {

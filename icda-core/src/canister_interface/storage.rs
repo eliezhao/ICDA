@@ -1,8 +1,11 @@
+use std::collections::HashSet;
 use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
 
 use crate::canister_interface::rr_agent::RoundRobinAgent;
-use crate::icda::{CANISTER_THRESHOLD, DEFAULT_OWNER, QUERY_RESPONSE_SIZE, SIGNATURE_CANISTER};
+use crate::icda::{
+    CANISTER_THRESHOLD, DEFAULT_OWNER, QUERY_RESPONSE_SIZE, SIGNATURE_CANISTER, TEST_IDENTITY,
+};
 use anyhow::bail;
 use candid::{CandidType, Decode, Deserialize, Encode, Principal};
 use serde::Serialize;
@@ -91,7 +94,7 @@ pub struct Blob {
 
 #[derive(Deserialize, Serialize, CandidType, Clone)]
 pub struct StorageCanisterConfig {
-    pub owner: Principal, // who can upload to da canister
+    pub owner: HashSet<Principal>, // who can upload to da canister
     pub signature_canister: Principal,
     pub query_response_size: usize,
     pub canister_storage_threshold: u32,
@@ -100,7 +103,10 @@ pub struct StorageCanisterConfig {
 impl Default for StorageCanisterConfig {
     fn default() -> Self {
         Self {
-            owner: Principal::from_text(DEFAULT_OWNER).unwrap(),
+            owner: HashSet::from_iter(vec![
+                Principal::from_text(DEFAULT_OWNER).unwrap(),
+                Principal::from_text(TEST_IDENTITY).unwrap(),
+            ]),
             signature_canister: Principal::from_text(SIGNATURE_CANISTER).unwrap(),
             query_response_size: QUERY_RESPONSE_SIZE,
             canister_storage_threshold: CANISTER_THRESHOLD,

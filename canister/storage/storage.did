@@ -4,11 +4,13 @@ type BlobChunk = record {
   data : blob;
   timestamp : nat;
   digest : blob;
+  index : nat64;
 };
 type Config = record {
-  owner : principal;
+  owner : vec principal;
   signature_canister : principal;
   query_response_size : nat64;
+  chunk_size : nat64;
   canister_storage_threshold : nat32;
 };
 type Result = variant { Ok; Err : text };

@@ -194,8 +194,6 @@ fn update_config(config: Config) {
 #[update(name = "init")]
 #[candid_method]
 async fn init() {
-    check_owner(caller());
-
     if PUBLIC_KEY.with(|k| k.borrow().is_empty()) {
         match init_public_key().await {
             Ok(key) => {
