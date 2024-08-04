@@ -2,6 +2,6 @@
 .idea
 /log
 .DS_Store
-identity
+./identity
 test/log
 script
