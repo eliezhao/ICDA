@@ -23,6 +23,7 @@ use std::time::Duration;
 use icda_core::icda::ICDA;
 use server::storage::{LocalStorage, S3Storage, Storage};
 use tonic::transport::Server;
+use tracing::Level;
 
 #[derive(Debug, Parser)]
 struct Cli {
@@ -194,12 +195,7 @@ impl Disperser for DAServer {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let (writer, _guard) = tracing_appender::non_blocking(std::io::stdout());
-    tracing_subscriber::fmt()
-        .with_writer(writer)
-        .with_line_number(true)
-        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-        .init();
+    tracing_subscriber::fmt().with_max_level(Level::INFO).init();
 
     let Cli {
         server_port,

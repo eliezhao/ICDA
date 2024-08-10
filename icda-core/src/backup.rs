@@ -21,9 +21,13 @@ pub struct ReUploader {
 impl ReUploader {
     pub async fn new(icda: ICDA) -> Self {
         // create backup dir
-        tokio::fs::create_dir(BACKUP_PATH)
-            .await
-            .expect("failed to create backup dir");
+
+        // check if backup file exist
+        if !std::path::Path::new(BACKUP_PATH).exists() {
+            tokio::fs::create_dir(BACKUP_PATH)
+                .await
+                .expect("failed to create backup dir");
+        }
 
         let backup = tokio::fs::read_dir(BACKUP_PATH)
             .await
