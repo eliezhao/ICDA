@@ -3,7 +3,7 @@
 //! Cargo run -p da_server -- s3 --profile profile-abc --bucket bucket-xyz
 //! cargo run -p da_server -- local --db-path /tmp/da_server.db
 
-use anyhow::Result;
+use anyhow::{ensure, Result};
 use async_trait::async_trait;
 use clap::{ArgAction, Parser, Subcommand};
 use governor::{Quota, RateLimiter};
@@ -23,7 +23,7 @@ use std::time::Duration;
 use icda_core::icda::ICDA;
 use server::storage::{LocalStorage, S3Storage, Storage};
 use tonic::transport::Server;
-use tracing::Level;
+use tracing::{info, Level};
 
 #[derive(Debug, Parser)]
 struct Cli {
@@ -223,7 +223,7 @@ async fn main() -> Result<()> {
         .await
         .unwrap();
 
-    tracing::info!("checking service...");
+    info!("checking service...");
 
     // check if cmd is IC
     if is_icda {
@@ -231,10 +231,14 @@ async fn main() -> Result<()> {
     }
 
     let _ret = storage.get_blob(id).await.unwrap();
-    tracing::trace!("Initial save/restore successful");
+    ensure!(
+        _ret == vec![102, 97, 105, 122, 32, 104, 97, 110, 97, 10],
+        "Initial save/restore failed"
+    );
+    info!("Initial save/restore successful");
 
     let flow_rate = if !disable_rate_limiting {
-        tracing::info!(
+        info!(
             "Rate limiting enabled: bytes_per_second = {bytes_per_second}, max_burst = {max_burst}"
         );
         let burst = NonZeroU32::new(max_burst).expect("Burst should be non-zero");
@@ -243,7 +247,7 @@ async fn main() -> Result<()> {
         let quota = Quota::per_minute(bytes_per_min).allow_burst(burst);
         Some(Arc::new(RateLimiter::direct(quota)))
     } else {
-        tracing::info!("Rate limiting disabled");
+        info!("Rate limiting disabled");
         None
     };
 
