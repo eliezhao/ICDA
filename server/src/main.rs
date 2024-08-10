@@ -231,7 +231,7 @@ async fn main() -> Result<()> {
 
     // check if cmd is IC
     if is_icda {
-        tokio::time::sleep(Duration::from_secs(10)).await
+        tokio::time::sleep(Duration::from_secs(20)).await
     }
 
     let _ret = storage.get_blob(id).await.unwrap();

@@ -146,15 +146,16 @@ impl StorageCanister {
     }
 
     pub async fn save_blob(&self, chunk: &BlobChunk) -> anyhow::Result<()> {
-        let arg = Encode!(&chunk)?;
+        let arg = Encode!(chunk)?;
         let raw_response = self
             .agent
             .update_call(&self.canister_id, "save_blob", arg)
             .await?;
         let response = Decode!(&raw_response, Result<(), String>)?;
         if let Err(e) = response {
-            bail!("failed to save blob: {}", e)
+            bail!("storage canister: save blob: failed to save blob: {}", e)
         }
+
         Ok(())
     }
 

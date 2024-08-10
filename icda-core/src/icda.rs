@@ -1,9 +1,11 @@
+use crate::backup::ReUploader;
 use crate::canister_interface::rr_agent::RoundRobinAgent;
 use crate::canister_interface::signature::{ConfirmationStatus, SignatureCanister};
 use crate::canister_interface::storage::{BlobChunk, RoutingInfo, StorageCanister};
 use anyhow::bail;
 use anyhow::Result;
 use candid::{Deserialize, Principal};
+use futures::executor::block_on;
 use ic_agent::identity::BasicIdentity;
 use rand::random;
 use serde::Serialize;
@@ -43,6 +45,8 @@ pub const CANISTER_COLLECTIONS: [[&str; REPLICA_NUM]; COLLECTION_SIZE] = [
     ["oyfj2-gaaaa-aaaak-akxdq-cai"], // k44fs-gm4pv-afozh-rs7zw-cg32n-u7xov-xqyx3-2pw5q-eucnu-cosd4-uqe
     ["r2xtu-uiaaa-aaaag-alf6q-cai"], // lspz2-jx4pu-k3e7p-znm7j-q4yum-ork6e-6w4q6-pijwq-znehu-4jabe-kqe
 ];
+
+const RETRY_TIMES: usize = 3;
 
 #[derive(Serialize, Deserialize, Clone, Default)]
 pub struct BlobKey {
@@ -95,8 +99,10 @@ impl ICDA {
                         info!("ICDA::new(): signature canister init success");
                     }
                     Err(e) => {
-                        warn!("ICDA::new(): signature canister init failed, error: {:?}, retry after 5 seconds",e);
-                        tokio::time::sleep(Duration::from_secs(5)).await;
+                        bail!(
+                            "ICDA::new(): signature canister init failed, error: {:?}",
+                            e
+                        );
                     }
                 }
             }
@@ -104,14 +110,23 @@ impl ICDA {
 
         let canister_collection_index = Arc::new(Mutex::new(random::<usize>() % COLLECTION_SIZE));
 
-        // create backup dir
-        let _ = tokio::fs::create_dir("backup").await;
-
-        Ok(Self {
+        let _self = Self {
             canister_collection_index,
             storage_canisters_map,
             signature_canister,
-        })
+        };
+
+        // create backup thread
+        let _icda = _self.clone();
+        let backup_thread = async move {
+            let mut reuploader = ReUploader::new(_icda).await;
+            reuploader.monitor().await;
+        };
+        tokio::task::spawn_blocking(move || {
+            block_on(backup_thread);
+        });
+
+        Ok(_self)
     }
 
     pub async fn push_blob_to_canisters(&self, blob: Vec<u8>) -> Result<BlobKey> {
@@ -299,13 +314,13 @@ impl ICDA {
 
 impl ICDA {
     // push chunks to a single canister
-    async fn push_chunks_to_canister(
+    pub(crate) async fn push_chunks_to_canister(
         sc: StorageCanister,
         chunks: Arc<Vec<BlobChunk>>,
     ) -> Result<()> {
         for chunk in chunks.iter() {
             // simple re-upload
-            for i in 0..3 {
+            for i in 0..RETRY_TIMES {
                 if let Err(e) = sc.save_blob(chunk).await {
                     warn!(
                         "ICDA::save_blob_chunk(): cid: {}, error: {:?}, retry after 5 seconds",
@@ -314,7 +329,9 @@ impl ICDA {
                     );
                     if i == 2 {
                         // save chunks into local storage
-                        let serialized = bincode::serialize(&chunk).unwrap();
+                        let serialized = bincode::serialize(chunk).unwrap();
+
+                        // 放到icda 的 reuploader中
                         let _ = tokio::fs::write(
                             format!(
                                 "backup/chunk_{}_{}.bin",
