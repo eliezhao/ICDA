@@ -31,22 +31,29 @@ pub struct BlobChunk {
 }
 
 impl BlobChunk {
-    pub fn generate_chunks(blob: Vec<u8>, digest: [u8; 32], timestamp: u128) -> Vec<BlobChunk> {
+    // FLAG: 优化，不需要保存BlobChunk这个中间态
+    pub fn generate_serialized_chunks(
+        blob: Vec<u8>,
+        digest: [u8; 32],
+        timestamp: u128,
+    ) -> Vec<Vec<u8>> {
         // split to chunks
         let total = blob.len();
         let data_slice = Self::split_blob_into_chunks(blob);
-        let mut chunks = Vec::with_capacity(data_slice.len());
-        for (index, slice) in data_slice.iter().enumerate() {
+        let mut serialized_chunks = Vec::with_capacity(data_slice.len());
+        for (index, slice) in data_slice.into_iter().enumerate() {
             let chunk = BlobChunk {
                 index,
                 digest,
                 timestamp,
                 total,
-                data: slice.to_owned(),
+                data: slice,
             };
-            chunks.push(chunk);
+            let serialized_chunk = Encode!(&chunk).unwrap();
+            drop(chunk); // drop the chunk
+            serialized_chunks.push(serialized_chunk);
         }
-        chunks
+        serialized_chunks
     }
 
     fn split_blob_into_chunks(blob: Vec<u8>) -> Vec<Vec<u8>> {
@@ -145,11 +152,10 @@ impl StorageCanister {
         Ok(response)
     }
 
-    pub async fn save_blob(&self, chunk: &BlobChunk) -> anyhow::Result<()> {
-        let arg = Encode!(chunk)?;
+    pub async fn save_blob(&self, serialized_chunk: Vec<u8>) -> anyhow::Result<()> {
         let raw_response = self
             .agent
-            .update_call(&self.canister_id, "save_blob", arg)
+            .update_call(&self.canister_id, "save_blob", serialized_chunk)
             .await?;
         let response = Decode!(&raw_response, Result<(), String>)?;
         if let Err(e) = response {

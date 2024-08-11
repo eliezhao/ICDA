@@ -142,8 +142,8 @@ impl ICDA {
             .map(|sc| sc.canister_id)
             .collect::<Vec<_>>();
 
-        let blob_chunks = Arc::new(BlobChunk::generate_chunks(
-            blob.clone(),
+        let blob_chunks = Arc::new(BlobChunk::generate_serialized_chunks(
+            blob,
             blob_digest,
             timestamp,
         ));
@@ -208,6 +208,8 @@ impl ICDA {
                 tokio::spawn(fut);
             }
         }
+
+        drop(blob_chunks);
 
         let blob_key = BlobKey {
             digest: blob_digest,
@@ -316,12 +318,13 @@ impl ICDA {
     // push chunks to a single canister
     pub(crate) async fn push_chunks_to_canister(
         sc: StorageCanister,
-        chunks: Arc<Vec<BlobChunk>>,
+        chunks: Arc<Vec<Vec<u8>>>,
     ) -> Result<()> {
         for chunk in chunks.iter() {
             // simple re-upload
             for i in 0..RETRY_TIMES {
-                if let Err(e) = sc.save_blob(chunk).await {
+                //todo: 后续对update call进行优化，这里的chunk clone是没有必要的，可以直接通过Arc读取，后续再做
+                if let Err(e) = sc.save_blob(chunk.clone()).await {
                     warn!(
                         "ICDA::save_blob_chunk(): cid: {}, error: {:?}, retry after 5 seconds",
                         sc.canister_id.to_text(),
@@ -333,27 +336,21 @@ impl ICDA {
 
                         // 放到icda 的 reuploader中
                         let _ = tokio::fs::write(
-                            format!(
-                                "backup/chunk_{}_{}.bin",
-                                sc.canister_id.to_text(),
-                                chunk.index
-                            ),
+                            format!("backup/chunk_{}.bin", sc.canister_id.to_text(),),
                             serialized,
                         )
                         .await;
 
                         warn!(
-                            "ICDA::save_blob_chunk(): cid: {}, error: {:?}, retry 3 times failed. Save chunk to local storage: chunk_{}_{}.bin",
+                            "ICDA::save_blob_chunk(): cid: {}, error: {:?}, retry 3 times failed. Save chunk to local storage: chunk_{}.bin",
                             sc.canister_id.to_text(),
                             e,
                             sc.canister_id.to_text(),
-                            chunk.index
                         );
 
                         bail!(
-                            "ICDA::save_blob_chunk(): cid: {}, digest: {}, error: {:?}, retry 3 times failed",
+                            "ICDA::save_blob_chunk(): cid: {}, error: {:?}, retry 3 times failed",
                             sc.canister_id.to_text(),
-                            hex::encode(chunk.digest),
                             e
                         );
                     }

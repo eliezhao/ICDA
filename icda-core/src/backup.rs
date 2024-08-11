@@ -1,4 +1,3 @@
-use crate::canister_interface::storage::BlobChunk;
 use crate::icda::ICDA;
 use candid::Principal;
 use regex::Regex;
@@ -6,6 +5,8 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::fs::{File, ReadDir};
 use tokio::io::AsyncReadExt;
+
+//todo: 将backup的操作和icda中对backup的操作进行合并
 
 pub async fn cycle_monitor() {
     unimplemented!()
@@ -64,14 +65,17 @@ impl ReUploader {
         }
     }
 
-    //todo: 可以不用每次都传path, 以及将这个模块放到icda里面
-    // 以及将对chunk的deserialize以及命名放到这个模块
+    // todo: 可以不用每次都传path, 以及将这个模块放到icda里面
+    //  以及将对chunk的deserialize以及命名放到这个模块
     async fn reupload(icda: Arc<ICDA>, path: PathBuf) {
-        let mut file = File::open(&path).await.expect("failed to open file");
         let mut buffer = Vec::new();
-        file.read_to_end(&mut buffer)
-            .await
-            .expect("failed to read file");
+
+        {
+            let mut file = File::open(&path).await.expect("failed to open file");
+            file.read_to_end(&mut buffer)
+                .await
+                .expect("failed to read file");
+        }
 
         // file's name is : chunk-{canister_id}-{chunk.index}.bin
         let canister_id = parse_canister_id_from_file_name(path);
@@ -81,23 +85,24 @@ impl ReUploader {
             .expect("failed to get canister")
             .clone();
 
-        let chunk: BlobChunk = bincode::deserialize(&buffer).expect("failed to deserialize");
+        let serialized_chunk: Vec<u8> =
+            bincode::deserialize(&buffer).expect("failed to deserialize");
+        drop(buffer);
 
         loop {
-            match sc.save_blob(&chunk).await {
+            // 这里因为是reupload，所以暂时不考虑会有很大量的chunk的累计，所以直接用了clone
+            match sc.save_blob(serialized_chunk.clone()).await {
                 Ok(_) => {
                     tracing::info!(
-                        "ICDA ReUploader: reupload success, canister id: {}, chunk index: {}",
+                        "ICDA ReUploader: reupload success, canister id: {}",
                         canister_id.to_text(),
-                        chunk.index
                     );
                     break;
                 }
                 Err(e) => {
                     tracing::error!(
-                        "ICDA ReUploader: reupload failed: canister id: {}, chunk index: {}.  error: {:?}, retry after 60s",
+                        "ICDA ReUploader: reupload failed: canister id: {}.  error: {:?}, retry after 60s",
                         canister_id.to_text(),
-                        chunk.index,
                         e
                     );
                     tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
@@ -108,7 +113,7 @@ impl ReUploader {
 }
 
 fn parse_canister_id_from_file_name(path: PathBuf) -> Principal {
-    let re = Regex::new(r"chunk_(\d+)_\d+.bin").expect("failed to compile regex");
+    let re = Regex::new(r"chunk_(\d+).bin").expect("failed to compile regex");
     let canister_id = re
         .captures(
             path.file_name()
