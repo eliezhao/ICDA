@@ -89,6 +89,7 @@ pub async fn put_to_canister(
                             error!("push blob to canister error: {:?}", e);
                         }
                     }
+                    drop(_keys);
                 };
                 let handle = tokio::spawn(disperse_fut);
                 _futs.lock().await.push(handle);
@@ -100,15 +101,15 @@ pub async fn put_to_canister(
         tokio::time::sleep(Duration::from_secs(1)).await;
     }
 
-    while Arc::strong_count(&futs) > 1 {
-        info!("waiting for all futures to complete");
-        tokio::time::sleep(Duration::from_secs(5)).await;
-    }
-
     let mut futs_guard = futs.lock().await;
     let futs_vec = futs_guard.drain(..).collect::<Vec<_>>();
     drop(futs_guard); // Explicitly drop the lock to avoid holding it during await
     let _ = join_all(futs_vec).await;
+
+    while Arc::strong_count(&keys) > 1 {
+        info!("waiting for all futures to complete");
+        tokio::time::sleep(Duration::from_secs(5)).await;
+    }
 
     let content = fs::read_to_string(&key_path).await.unwrap_or_default();
 
