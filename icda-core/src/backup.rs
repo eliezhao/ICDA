@@ -60,7 +60,7 @@ impl ReUploader {
                     );
                 }
             }
-            tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
+            tokio::time::sleep(tokio::time::Duration::from_secs(600)).await;
         }
     }
 
