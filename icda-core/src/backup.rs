@@ -7,6 +7,7 @@ use tokio::fs::{File, ReadDir};
 use tokio::io::AsyncReadExt;
 
 //todo: 将backup的操作和icda中对backup的操作进行合并
+// 需要一个原子操作实现优雅关闭
 
 pub async fn cycle_monitor() {
     unimplemented!()
