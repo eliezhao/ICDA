@@ -4,7 +4,8 @@ use icda_core::canister_interface::signature::{
 };
 use icda_core::canister_interface::storage::StorageCanisterConfig;
 use icda_core::icda::{BlobKey, ICDA};
-use rand::Rng;
+use rand::seq::SliceRandom;
+use rand::{thread_rng, Rng};
 use serde_json::json;
 use std::sync::Arc;
 use std::time::Duration;
@@ -30,13 +31,17 @@ pub async fn get_from_canister(key_path: String, da: ICDA) -> anyhow::Result<()>
         .await
         .expect("Unable to read file");
 
-    let keys: Vec<BlobKey> = serde_json::from_str(&content).unwrap();
+    let mut keys: Vec<BlobKey> = serde_json::from_str(&content).unwrap();
+
+    let mut rng = thread_rng();
+    keys.shuffle(&mut rng);
 
     let mut tasks = Vec::new();
 
-    for key in keys.iter() {
+    let mut limit = 0;
+    for key in keys {
         let _da = da.clone();
-        tasks.push(async move {
+        let handle = tokio::spawn(async move {
             match _da.get_blob_from_canisters(key.clone()).await {
                 Ok(_) => {
                     info!("get from canister success, blob key: \n{:?}", key);
@@ -44,6 +49,13 @@ pub async fn get_from_canister(key_path: String, da: ICDA) -> anyhow::Result<()>
                 Err(e) => error!("get from canister error: {:?}", e),
             }
         });
+        tasks.push(handle);
+        limit += 1;
+        if limit == 10 {
+            info!("limit control");
+            tokio::time::sleep(Duration::from_secs(5)).await;
+            limit = 0;
+        }
     }
 
     join_all(tasks).await;

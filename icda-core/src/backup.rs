@@ -1,19 +1,21 @@
-use crate::icda::ICDA;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use candid::Principal;
 use regex::Regex;
-use std::path::PathBuf;
-use std::sync::Arc;
+use serde::{Deserialize, Serialize};
 use tokio::fs::{File, ReadDir};
 use tokio::io::AsyncReadExt;
+use tokio::select;
 
-//todo: 将backup的操作和icda中对backup的操作进行合并
-// 需要一个原子操作实现优雅关闭
+use crate::icda::ICDA;
 
 pub async fn cycle_monitor() {
     unimplemented!()
 }
 
-const BACKUP_PATH: &str = "backup";
+pub const BACKUP_PATH: &str = "backup";
 
 pub struct ReUploader {
     backup: ReadDir,
@@ -22,8 +24,6 @@ pub struct ReUploader {
 
 impl ReUploader {
     pub async fn new(icda: ICDA) -> Self {
-        // create backup dir
-
         // check if backup file exist
         if !std::path::Path::new(BACKUP_PATH).exists() {
             tokio::fs::create_dir(BACKUP_PATH)
@@ -40,8 +40,22 @@ impl ReUploader {
         Self { backup, icda }
     }
 
+    pub async fn start_uploader(self) {
+        let backup_thread = async move {
+            self.uploader().await;
+        };
+
+        let ctrl_c = tokio::signal::ctrl_c();
+        select! {
+                _ = backup_thread => {},
+                _ = ctrl_c => {
+                    tracing::info!("ICDA ReUploader: monitor: ctrl-c received, shutdown");
+            }
+        }
+    }
+
     // cycling monitor backup file and re-upload the failed chunks
-    pub async fn monitor(&mut self) {
+    async fn uploader(mut self) {
         loop {
             match self.backup.next_entry().await {
                 Ok(entry) => match entry {
@@ -66,8 +80,6 @@ impl ReUploader {
         }
     }
 
-    // todo: 可以不用每次都传path, 以及将这个模块放到icda里面
-    //  以及将对chunk的deserialize以及命名放到这个模块
     async fn reupload(icda: Arc<ICDA>, path: PathBuf) {
         let mut buffer = Vec::new();
 
@@ -79,7 +91,7 @@ impl ReUploader {
         }
 
         // file's name is : chunk-{canister_id}-{chunk.index}.bin
-        let canister_id = parse_canister_id_from_file_name(path);
+        let canister_id = Self::parse_canister_id_from_file_name(&path);
         let sc = icda
             .storage_canisters_map
             .get(&canister_id)
@@ -98,6 +110,10 @@ impl ReUploader {
                         "ICDA ReUploader: reupload success, canister id: {}",
                         canister_id.to_text(),
                     );
+                    // remove file
+                    tokio::fs::remove_file(path)
+                        .await
+                        .expect("failed to remove file");
                     break;
                 }
                 Err(e) => {
@@ -113,18 +129,66 @@ impl ReUploader {
     }
 }
 
-fn parse_canister_id_from_file_name(path: PathBuf) -> Principal {
-    let re = Regex::new(r"chunk_(\d+).bin").expect("failed to compile regex");
-    let canister_id = re
-        .captures(
-            path.file_name()
-                .expect("failed to get file name")
-                .to_str()
-                .unwrap(),
-        )
-        .expect("failed to get canister id")
-        .get(1)
-        .expect("failed to get canister id")
-        .as_str();
-    Principal::from_text(canister_id).expect("failed to parse canister id")
+impl ReUploader {
+    pub async fn save<'a, T>(data: &'a T, file_name: String)
+    where
+        T: Serialize + Deserialize<'a>,
+    {
+        // save chunks into local storage
+        let serialized = bincode::serialize(&data).unwrap();
+
+        // 放到icda 的 reuploader中
+        let _ = tokio::fs::write(format!("{BACKUP_PATH}/{}", file_name,), serialized).await;
+    }
+
+    // (canister_id)_chunk_(system_time).bin
+    pub fn generate_backup_file_name(canister_id: String, data_type: &str) -> String {
+        canister_id
+            + "_"
+            + data_type
+            + "_"
+            + &SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("Failed to get timestamp")
+                .as_nanos()
+                .to_string()
+            + ".bin"
+    }
+
+    // (canister_id)_chunk_(system_time).bin
+    fn parse_canister_id_from_file_name(path: &Path) -> Principal {
+        let re = Regex::new(r"([a-z0-9-]+)_chunk_\d+\.bin").expect("failed to compile regex");
+        let file_name = path
+            .file_name()
+            .expect("failed to get file name")
+            .to_str()
+            .expect("failed to convert to str");
+        let captures = re.captures(file_name).expect("failed to match regex");
+        let canister_id = captures.get(1).expect("failed to get canister id").as_str();
+        Principal::from_text(canister_id).expect("failed to parse canister id")
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_generate_backup_file_name() {
+        let canister_id = "r2xtu-uiaaa-aaaag-alf6q-cai".to_string();
+        let data_type = "chunk";
+        let file_name = ReUploader::generate_backup_file_name(canister_id, data_type);
+        let re = Regex::new(r"([a-z0-9-]+)_chunk_\d+\.bin").expect("failed to compile regex");
+        assert!(re.is_match(&file_name));
+    }
+
+    #[test]
+    fn test_parse_canister_id_from_file_name() {
+        let canister_id = "r2xtu-uiaaa-aaaag-alf6q-cai".to_string();
+        let data_type = "chunk";
+        let file_name = ReUploader::generate_backup_file_name(canister_id.clone(), data_type);
+        let path = PathBuf::from(file_name);
+        let parsed_canister_id = ReUploader::parse_canister_id_from_file_name(&path);
+        assert_eq!(canister_id, parsed_canister_id.to_text());
+    }
 }

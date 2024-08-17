@@ -3,10 +3,13 @@
 //! time heap
 //! signature
 
-use crate::{BLOBS, DACONFIG};
 use candid::{CandidType, Deserialize};
 use ic_cdk::print;
 use serde::Serialize;
+
+use crate::{BLOBS, DACONFIG};
+
+pub struct BlobData(pub Vec<u8>);
 
 // upload 用
 #[derive(Deserialize, Serialize, CandidType, Debug, Clone)]

@@ -1,21 +1,23 @@
-use crate::backup::ReUploader;
-use crate::canister_interface::rr_agent::RoundRobinAgent;
-use crate::canister_interface::signature::{ConfirmationStatus, SignatureCanister};
-use crate::canister_interface::storage::{BlobChunk, RoutingInfo, StorageCanister};
-use anyhow::bail;
-use anyhow::Result;
-use candid::{Deserialize, Principal};
-use futures::executor::block_on;
-use ic_agent::identity::BasicIdentity;
-use rand::random;
-use serde::Serialize;
-use sha2::Digest;
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+use anyhow::bail;
+use anyhow::Result;
+use candid::{Deserialize, Principal};
+use rand::random;
+use serde::Serialize;
+use sha2::Digest;
 use tokio::sync::Mutex;
 use tracing::{error, info, warn};
+
+use ic_agent::identity::BasicIdentity;
+
+use crate::backup::{ReUploader, BACKUP_PATH};
+use crate::canister_interface::rr_agent::RoundRobinAgent;
+use crate::canister_interface::signature::{ConfirmationStatus, SignatureCanister};
+use crate::canister_interface::storage::{BlobChunk, RoutingInfo, StorageCanister};
 
 pub const REPLICA_NUM: usize = 1;
 pub const COLLECTION_SIZE: usize = 11;
@@ -92,7 +94,10 @@ impl ICDA {
 
         if let Ok(res) = signature_canister.public_key().await {
             if !res.is_empty() {
-                info!("ICDA::new(): signature canister public key: {:?}", res);
+                info!(
+                    "ICDA::new(): signature canister public key: {:?}",
+                    hex::encode(res)
+                );
             } else {
                 match signature_canister.init().await {
                     Ok(_) => {
@@ -118,13 +123,8 @@ impl ICDA {
 
         // create backup thread
         let _icda = _self.clone();
-        let backup_thread = async move {
-            let mut reuploader = ReUploader::new(_icda).await;
-            reuploader.monitor().await;
-        };
-        tokio::task::spawn_blocking(move || {
-            block_on(backup_thread);
-        });
+        let reuploader = ReUploader::new(_icda).await;
+        tokio::spawn(reuploader.start_uploader());
 
         Ok(_self)
     }
@@ -323,30 +323,27 @@ impl ICDA {
         for chunk in chunks.iter() {
             // simple re-upload
             for i in 0..RETRY_TIMES {
-                //todo: 后续对update call进行优化，这里的chunk clone是没有必要的，可以直接通过Arc读取，后续再做
-                if let Err(e) = sc.save_blob(chunk.clone()).await {
+                if let Err(e) = sc.save_blob(chunk.to_vec()).await {
                     warn!(
                         "ICDA::save_blob_chunk(): cid: {}, error: {:?}, retry after 5 seconds",
                         sc.canister_id.to_text(),
                         e
                     );
                     if i == 2 {
-                        // save chunks into local storage
-                        let serialized = bincode::serialize(chunk).unwrap();
-
-                        // 放到icda 的 reuploader中
-                        let _ = tokio::fs::write(
-                            format!("backup/chunk_{}.bin", sc.canister_id.to_text(),),
-                            serialized,
-                        )
-                        .await;
+                        // save to local storage
+                        let file_name = ReUploader::generate_backup_file_name(
+                            sc.canister_id.to_text(),
+                            "chunk",
+                        );
 
                         warn!(
-                            "ICDA::save_blob_chunk(): cid: {}, error: {:?}, retry 3 times failed. Save chunk to local storage: chunk_{}.bin",
-                            sc.canister_id.to_text(),
+                            "ICDA::save_blob_chunk(): retry 3 times failed, error: {:?}. save chunk to local storage: {}/{}",
                             e,
-                            sc.canister_id.to_text(),
+                            BACKUP_PATH,
+                            file_name
                         );
+
+                        ReUploader::save(chunk, file_name).await;
 
                         bail!(
                             "ICDA::save_blob_chunk(): cid: {}, error: {:?}, retry 3 times failed",
@@ -354,6 +351,7 @@ impl ICDA {
                             e
                         );
                     }
+
                     tokio::time::sleep(Duration::from_secs(5)).await;
                 } else {
                     break;
