@@ -1,8 +1,0 @@
-[identity]
-path = "identity.pem"
-
-[batch]
-batch_number = 2 # 上传多少blob
-
-[blobkey]
-path = "blob_key.json"

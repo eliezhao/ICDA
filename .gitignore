@@ -3,4 +3,5 @@
 /log
 .DS_Store
 ./identity
-test/log
+test
+script
