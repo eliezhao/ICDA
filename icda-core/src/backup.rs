@@ -47,9 +47,9 @@ impl ReUploader {
 
         let ctrl_c = tokio::signal::ctrl_c();
         select! {
-                _ = backup_thread => {},
-                _ = ctrl_c => {
-                    tracing::info!("ICDA ReUploader: monitor: ctrl-c received, shutdown");
+            _ = backup_thread => {},
+            _ = ctrl_c => {
+                tracing::info!("ICDA ReUploader: monitor: ctrl-c received, shutdown");
             }
         }
     }
