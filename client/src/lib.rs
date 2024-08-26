@@ -1,14 +1,18 @@
+use std::cell::RefCell;
+use std::collections::HashMap;
 use futures::future::join_all;
 use icda_core::canister_interface::signature::{
     ConfirmationStatus, SignatureCanisterConfig, VerifyResult,
 };
-use icda_core::canister_interface::storage::StorageCanisterConfig;
+use icda_core::canister_interface::storage::{RoutingInfo, StorageCanisterConfig};
 use icda_core::icda::{BlobKey, ICDA};
 use rand::seq::SliceRandom;
 use rand::{thread_rng, Rng};
 use serde_json::json;
 use std::sync::Arc;
 use std::time::Duration;
+use futures::SinkExt;
+use futures::stream::iter;
 use tokio::fs;
 use tokio::fs::OpenOptions;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -72,6 +76,16 @@ pub async fn put_to_canister(
     // future tasks
     let futs = Arc::new(Mutex::new(Vec::with_capacity(batch_number)));
 
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<(RoutingInfo, _)>(5 * batch_number);
+    let statics = Arc::new(Mutex::new(HashMap::with_capacity(5 * batch_number)));
+
+    let mut _statics = statics.clone();
+    tokio::spawn(async move {
+        while let Some((routing_info, duration)) = rx.recv().await {
+            _statics.lock().await.entry(routing_info.host_canisters[0].to_text()).or_insert(Vec::new()).push(duration);
+        }
+    });
+
     let da = Arc::new(da);
     // push blob to canisters
     for i in 0..batch_number {
@@ -87,14 +101,20 @@ pub async fn put_to_canister(
             rng.fill(&mut sub[..]);
         }
 
+        let _tx = tx.clone();
         let fut = async move {
             for item in batch.into_iter() {
                 let _da = _da.clone();
                 let _keys = _keys.clone();
+                let _tx = _tx.clone();
+
                 let disperse_fut = async move {
+                    let before = tokio::time::Instant::now();
                     match _da.push_blob_to_canisters(item).await {
                         Ok(res) => {
-                            info!("push blob to canister success, blob key: \n{:?}", res);
+                            let after = tokio::time::Instant::now();
+                            let duration = after - before;
+                            _tx.send((res.routing_info.clone(), duration)).await.unwrap();
                             _keys.lock().await.push(res);
                         }
                         Err(e) => {
@@ -102,6 +122,7 @@ pub async fn put_to_canister(
                         }
                     }
                     drop(_keys);
+                    drop(_tx);
                 };
                 let handle = tokio::spawn(disperse_fut);
                 _futs.lock().await.push(handle);
@@ -122,6 +143,21 @@ pub async fn put_to_canister(
         info!("waiting for all futures to complete");
         tokio::time::sleep(Duration::from_secs(5)).await;
     }
+
+    // 处理statics
+    let statics = statics.lock().await.clone();
+
+    // write statics to file
+    let mut file = OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .create(true)
+        .open("statics.json")
+        .await
+        .expect("Unable to open file");
+    file.write_all(serde_json::to_string_pretty(&statics).unwrap().as_bytes())
+        .await
+        .expect("Unable to write file");
 
     let content = fs::read_to_string(&key_path).await.unwrap_or_default();
 
